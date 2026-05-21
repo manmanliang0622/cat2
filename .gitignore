@@ -7,3 +7,4 @@ tools/
 *.txt
 example.pdf
 plan.pdf
+.claude/
