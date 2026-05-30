@@ -1,9 +1,12 @@
 package catcatch;
 
+import java.io.File;
+import java.io.FileInputStream;
 import javafx.application.Platform;
 import javafx.geometry.*;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.image.*;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.*;
@@ -123,7 +126,78 @@ public class LobbyScene {
 
         centre.getChildren().addAll(infoCard, playersCard);
         HBox.setHgrow(playersCard, Priority.ALWAYS);
-        root.setCenter(centre);
+
+        // ── Bottom: game rules + image legend ─────────────────────────────────
+        VBox rulesCard = new VBox(10);
+        rulesCard.setStyle(t.cardStyle());
+        rulesCard.setPadding(new Insets(16, 24, 16, 24));
+
+        Label rulesTitle = new Label("📖 遊戲說明");
+        rulesTitle.setStyle("-fx-font-size:15px;-fx-font-weight:bold;-fx-text-fill:" + t.text + ";");
+
+        // Scoring table row helper
+        HBox scoreRow = new HBox(30);
+        scoreRow.setAlignment(Pos.CENTER_LEFT);
+
+        String[][] scoreInfo = {
+            {"+10 分", "點到目標色貓咪", "#27AE60"},
+            {"−5 分",  "點到其他顏色貓咪", "#E67E22"},
+            {"−15 分", "點到地雷狗狗",    "#e74c3c"},
+            {"45 秒",  "每局遊戲時間",    "#3498DB"},
+        };
+        for (String[] si : scoreInfo) {
+            Label badge = new Label(si[0]);
+            badge.setStyle("-fx-font-size:13px;-fx-font-weight:bold;-fx-text-fill:white;" +
+                           "-fx-background-color:" + si[2] + ";-fx-background-radius:8;-fx-padding:2 8;");
+            Label desc = new Label(si[1]);
+            desc.setStyle("-fx-font-size:12px;-fx-text-fill:" + t.text + ";");
+            VBox cell = new VBox(3, badge, desc);
+            cell.setAlignment(Pos.CENTER);
+            scoreRow.getChildren().add(cell);
+        }
+
+        // Image legend
+        HBox legendRow = new HBox(20);
+        legendRow.setAlignment(Pos.CENTER_LEFT);
+
+        String[][] legends = {
+            {"assets/cat-gold.jpg",  "蘋果貓咪", "+10", "#27AE60"},
+            {"assets/cat-gray.jpg",  "茄子貓咪", "+10", "#27AE60"},
+            {"assets/cat-snow.jpg",  "橘子貓咪", "+10", "#27AE60"},
+            {"assets/dog.jpg",       "地雷狗狗", "−15", "#e74c3c"},
+        };
+        for (String[] lg : legends) {
+            VBox item = new VBox(4);
+            item.setAlignment(Pos.CENTER);
+
+            ImageView iv = new ImageView();
+            iv.setFitWidth(56); iv.setFitHeight(56);
+            iv.setPreserveRatio(true);
+            try (FileInputStream fis = new FileInputStream(new File(lg[0]))) {
+                Image img = new Image(fis);
+                if (!img.isError()) iv.setImage(img);
+            } catch (Exception ignored) {}
+
+            Label nameLbl = new Label(lg[1]);
+            nameLbl.setStyle("-fx-font-size:11px;-fx-text-fill:" + t.text + ";");
+
+            Label scoreLbl = new Label(lg[2]);
+            scoreLbl.setStyle("-fx-font-size:12px;-fx-font-weight:bold;-fx-text-fill:" + lg[3] + ";");
+
+            item.getChildren().addAll(iv, nameLbl, scoreLbl);
+            legendRow.getChildren().add(item);
+        }
+
+        // Extra hint
+        Label hint = new Label("💡 每 5 秒目標顏色會切換，記得看上方提示！");
+        hint.setStyle("-fx-font-size:11px;-fx-text-fill:" + t.muted + ";-fx-font-style:italic;");
+
+        rulesCard.getChildren().addAll(rulesTitle, new Separator(), scoreRow, legendRow, hint);
+        BorderPane.setMargin(rulesCard, new Insets(16, 0, 0, 0));
+
+        VBox mainContent = new VBox(0, centre, rulesCard);
+        VBox.setVgrow(centre, Priority.ALWAYS);
+        root.setCenter(mainContent);
 
         // ── State listener ────────────────────────────────────────────────────
         client.setListener(new GameClient.Listener() {
