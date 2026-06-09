@@ -161,10 +161,7 @@ public class CatCatchApp extends Application {
             while (ifaces.hasMoreElements()) {
                 NetworkInterface ni = ifaces.nextElement();
                 if (ni.isLoopback() || !ni.isUp()) continue;
-                // 跳過 ZeroTier 介面，留給 getZeroTierIP()
-                String name = ni.getName() == null ? "" : ni.getName().toLowerCase();
-                String disp = ni.getDisplayName() == null ? "" : ni.getDisplayName().toLowerCase();
-                if (name.startsWith("zt") || disp.contains("zerotier")) continue;
+                if (isZeroTierIface(ni)) continue; // 跳過 ZeroTier，留給 getZeroTierIP()
                 Enumeration<java.net.InetAddress> addrs = ni.getInetAddresses();
                 while (addrs.hasMoreElements()) {
                     java.net.InetAddress a = addrs.nextElement();
@@ -182,9 +179,7 @@ public class CatCatchApp extends Application {
             while (ifaces.hasMoreElements()) {
                 NetworkInterface ni = ifaces.nextElement();
                 if (!ni.isUp() || ni.isLoopback()) continue;
-                String name = ni.getName() == null ? "" : ni.getName().toLowerCase();
-                String disp = ni.getDisplayName() == null ? "" : ni.getDisplayName().toLowerCase();
-                if (!name.startsWith("zt") && !disp.contains("zerotier")) continue;
+                if (!isZeroTierIface(ni)) continue;
                 Enumeration<java.net.InetAddress> addrs = ni.getInetAddresses();
                 while (addrs.hasMoreElements()) {
                     java.net.InetAddress a = addrs.nextElement();
@@ -193,6 +188,21 @@ public class CatCatchApp extends Application {
             }
         } catch (Exception ignored) {}
         return null;
+    }
+
+    /**
+     * 判斷是否為 ZeroTier 虛擬網路介面。
+     *   zt*    → Linux / 舊版 macOS ZeroTier
+     *   feth*  → 新版 macOS ZeroTier（fake ethernet）
+     *   顯示名稱含 "zerotier" → Windows
+     */
+    static boolean isZeroTierIface(NetworkInterface ni) {
+        String name = ni.getName() == null ? "" : ni.getName().toLowerCase();
+        String disp = ni.getDisplayName() == null ? "" : ni.getDisplayName().toLowerCase();
+        return name.startsWith("zt")
+            || name.startsWith("feth")      // macOS ZeroTier 新版介面
+            || disp.contains("zerotier")
+            || disp.contains("zero tier");
     }
 
     public static void main(String[] args) { launch(args); }

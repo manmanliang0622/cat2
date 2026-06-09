@@ -114,13 +114,14 @@ public class RoomDiscoveryClient {
         } catch (Exception ignored) {}
     }
 
-    /** 判斷是否為 ZeroTier 虛擬介面。 */
+    /** 判斷是否為 ZeroTier 虛擬介面（與 CatCatchApp.isZeroTierIface 邏輯一致）。 */
     private static boolean isZeroTier(NetworkInterface ni) {
-        String name    = ni.getName() == null ? "" : ni.getName().toLowerCase();
-        String display = ni.getDisplayName() == null ? "" : ni.getDisplayName().toLowerCase();
-        return name.startsWith("zt")          // macOS / Linux
-            || display.contains("zerotier")   // Windows
-            || display.contains("zero tier");
+        String name = ni.getName() == null ? "" : ni.getName().toLowerCase();
+        String disp = ni.getDisplayName() == null ? "" : ni.getDisplayName().toLowerCase();
+        return name.startsWith("zt")       // Linux / 舊版 macOS
+            || name.startsWith("feth")     // 新版 macOS（fake ethernet）
+            || disp.contains("zerotier")
+            || disp.contains("zero tier"); // Windows
     }
 
     // ── 廣播位址工具 ─────────────────────────────────────────────────────────
