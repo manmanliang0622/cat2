@@ -17,188 +17,207 @@ import javafx.util.Duration;
 
 public class GameScene {
 
-    // ── Static maps ───────────────────────────────────────────────────────────
-
     private static final Map<String, String> VARIANT_LABEL = Map.of(
         "GRAY", "灰色貓咪", "GOLD", "金色貓咪", "SNOW", "雪白貓咪");
     private static final Map<String, String> VARIANT_COLOR = Map.of(
-        "GRAY", "#9E9E9E", "GOLD", "#FFC107", "SNOW", "#64B5F6");
+        "GRAY", "#9E9E9E", "GOLD", "#D4A800", "SNOW", "#4A9BD4");
     private static final Map<String, String> VARIANT_BG = Map.of(
-        "GRAY", "#F5F5F5", "GOLD", "#FFFDE7", "SNOW", "#E3F2FD");
+        "GRAY", "#F5F4F0", "GOLD", "#FFF8DC", "SNOW", "#EAF4FF");
+    private static final Map<String, String> VARIANT_BORDER = Map.of(
+        "GRAY", "#C0B8AC", "GOLD", "#C89800", "SNOW", "#3A88C8");
 
-    // processed (transparent-bg) images, loaded once
-    private static final Map<String, WritableImage> processedCache = new HashMap<>();
-
-    // ── Scene builder ─────────────────────────────────────────────────────────
+    private static final Map<String, WritableImage> imgCache = new HashMap<>();
 
     public static Scene build(CatCatchApp app, GameClient client) {
         Theme t = CatCatchApp.theme;
 
         BorderPane root = new BorderPane();
         root.setStyle(t.rootStyle());
-
-        // ── Pre-load & process all animal images in background ────────────────
         preloadImages();
 
-        // ── Top bar (100 px tall) ─────────────────────────────────────────────
+        // ── Top bar (candy style) ─────────────────────────────────────────────
         HBox topBar = new HBox();
         topBar.setAlignment(Pos.CENTER);
-        topBar.setPrefHeight(100);
-        topBar.setStyle("-fx-background-color:" + t.panelBg + ";" +
-                        "-fx-effect:dropshadow(gaussian,rgba(0,0,0,0.12),8,0,0,4);");
+        topBar.setPrefHeight(90);
+        topBar.setPadding(new Insets(0, 18, 0, 18));
+        topBar.setStyle(
+            "-fx-background-color:" + t.panelBg + ";" +
+            "-fx-border-color:" + t.accentDark + ";-fx-border-width:0 0 2.5 0;" +
+            "-fx-effect:dropshadow(gaussian,rgba(180,120,140,0.15),10,0,0,4);");
 
-        // --- Left: target indicator -------------------------------------------
-        // Large circular image  +  variant name
+        // --- Target section ---
         StackPane targetImgPane = new StackPane();
-        targetImgPane.setPrefSize(76, 76);
+        targetImgPane.setPrefSize(66, 66);
 
         ImageView targetIV = new ImageView();
-        targetIV.setFitWidth(76); targetIV.setFitHeight(76);
+        targetIV.setFitWidth(64); targetIV.setFitHeight(64);
         targetIV.setPreserveRatio(true);
 
-        // Coloured ring behind image
-        Circle targetRing = new Circle(42);
+        Circle targetRing = new Circle(36);
         targetRing.setFill(Color.TRANSPARENT);
-        targetRing.setStroke(Color.web("#9E9E9E"));
-        targetRing.setStrokeWidth(4);
-
+        targetRing.setStroke(Color.web("#C0B8AC"));
+        targetRing.setStrokeWidth(3);
         targetImgPane.getChildren().addAll(targetRing, targetIV);
 
-        Label targetHintLbl = new Label("🎯 現在要抓這隻！");
-        targetHintLbl.setStyle("-fx-font-size:12px;-fx-font-weight:bold;-fx-text-fill:" + t.muted + ";");
+        Label targetHint = new Label("現在要抓這隻！");
+        targetHint.setStyle("-fx-font-size:11px;-fx-font-weight:bold;-fx-text-fill:" + t.muted + ";");
+        Label targetName = new Label("灰色貓咪");
+        targetName.setStyle("-fx-font-size:18px;-fx-font-weight:bold;-fx-text-fill:#9E9E9E;");
 
-        Label targetNameLbl = new Label("灰色貓咪");
-        targetNameLbl.setStyle("-fx-font-size:22px;-fx-font-weight:bold;-fx-text-fill:#9E9E9E;");
+        VBox targetText = new VBox(2, targetHint, targetName);
+        targetText.setAlignment(Pos.CENTER_LEFT);
 
-        VBox targetTextBox = new VBox(2, targetHintLbl, targetNameLbl);
-        targetTextBox.setAlignment(Pos.CENTER_LEFT);
-
-        HBox targetSection = new HBox(14, targetImgPane, targetTextBox);
+        HBox targetSection = new HBox(12, targetImgPane, targetText);
         targetSection.setAlignment(Pos.CENTER);
-        targetSection.setPrefWidth(380);
-        targetSection.setPadding(new Insets(0, 20, 0, 20));
-        targetSection.setStyle("-fx-background-color:" + VARIANT_BG.get("GRAY") + ";" +
-                               "-fx-background-radius:12;-fx-padding:10 20;");
+        targetSection.setPrefWidth(340);
+        targetSection.setPadding(new Insets(8, 18, 8, 18));
+        targetSection.setStyle(
+            "-fx-background-color:" + VARIANT_BG.get("GRAY") + ";" +
+            "-fx-background-radius:18;-fx-border-color:" + VARIANT_BORDER.get("GRAY") + ";" +
+            "-fx-border-radius:18;-fx-border-width:2.5;");
 
-        // --- Centre: countdown timer ------------------------------------------
+        // --- Timer (candy card) ---
+        HBox timerInner = new HBox(6, Icons.get("hourglass", 22));
+        timerInner.setAlignment(Pos.CENTER);
         Label timerLabel = new Label("45");
-        timerLabel.setStyle("-fx-font-size:38px;-fx-font-weight:bold;-fx-text-fill:" + t.accent + ";" +
-                            "-fx-min-width:70;-fx-alignment:center;");
+        timerLabel.setStyle("-fx-font-size:32px;-fx-font-weight:bold;-fx-text-fill:" + t.accentDark +
+                            ";-fx-min-width:52;-fx-alignment:center;");
         Label timerUnit = new Label("秒");
-        timerUnit.setStyle("-fx-font-size:13px;-fx-text-fill:" + t.muted + ";");
-        VBox timerBox = new VBox(0, timerLabel, timerUnit);
+        timerUnit.setStyle("-fx-font-size:11px;-fx-text-fill:" + t.muted + ";");
+        timerInner.getChildren().add(timerLabel);
+        VBox timerBox = new VBox(1, timerInner, timerUnit);
         timerBox.setAlignment(Pos.CENTER);
-        timerBox.setPrefWidth(120);
+        timerBox.setPrefWidth(110);
+        timerBox.setStyle(
+            "-fx-background-color:" + t.sky + ";" +
+            "-fx-background-radius:18;-fx-border-color:#6BBDE0;-fx-border-radius:18;-fx-border-width:2.5;" +
+            "-fx-padding:6 12;-fx-effect:dropshadow(gaussian,rgba(100,180,220,0.25),6,0,1,3);");
 
-        // --- Right: personal score --------------------------------------------
-        Label scoreHead = new Label("我的分數");
-        scoreHead.setStyle("-fx-font-size:11px;-fx-text-fill:" + t.muted + ";");
+        // --- Score (candy card) ---
+        Label scoreHead = new Label("スコア");
+        scoreHead.setStyle("-fx-font-size:10px;-fx-text-fill:" + t.muted + ";");
+        HBox scoreInner = new HBox(6, Icons.get("coin", 20));
+        scoreInner.setAlignment(Pos.CENTER);
         Label scoreLabel = new Label("0");
-        scoreLabel.setStyle("-fx-font-size:30px;-fx-font-weight:bold;-fx-text-fill:" + t.accent + ";");
-        VBox scoreBox = new VBox(0, scoreHead, scoreLabel);
+        scoreLabel.setStyle("-fx-font-size:26px;-fx-font-weight:bold;-fx-text-fill:#907010;");
+        scoreInner.getChildren().add(scoreLabel);
+        VBox scoreBox = new VBox(1, scoreHead, scoreInner);
         scoreBox.setAlignment(Pos.CENTER);
-        scoreBox.setPrefWidth(200);
-        scoreBox.setPadding(new Insets(0, 20, 0, 0));
+        scoreBox.setPrefWidth(170);
+        scoreBox.setPadding(new Insets(0, 16, 0, 0));
+        scoreBox.setStyle(
+            "-fx-background-color:" + t.gold + ";" +
+            "-fx-background-radius:18;-fx-border-color:#C89800;-fx-border-radius:18;-fx-border-width:2.5;" +
+            "-fx-padding:6 12;-fx-effect:dropshadow(gaussian,rgba(200,160,0,0.20),6,0,1,3);");
 
         Region sp1 = new Region(); HBox.setHgrow(sp1, Priority.ALWAYS);
         Region sp2 = new Region(); HBox.setHgrow(sp2, Priority.ALWAYS);
         topBar.getChildren().addAll(targetSection, sp1, timerBox, sp2, scoreBox);
         root.setTop(topBar);
 
-        // ── Game canvas (left) ────────────────────────────────────────────────
+        // ── Game canvas (fills remaining width dynamically) ───────────────────
         Pane canvas = new Pane();
         canvas.setStyle("-fx-background-color:" + t.bg + ";");
-        canvas.setPrefWidth(760);
-        canvas.setPrefHeight(CatCatchApp.HEIGHT - 100);
+        // The canvas grows to fill width; fixed height = screen minus top bar
+        double canvasH = CatCatchApp.HEIGHT - 90;
+        canvas.setPrefHeight(canvasH);
 
-        // ── Leaderboard (right) ───────────────────────────────────────────────
-        VBox leaderboard = new VBox(8);
-        leaderboard.setPrefWidth(330);
-        leaderboard.setPadding(new Insets(16));
-        leaderboard.setStyle("-fx-background-color:" + t.panelBg + ";");
+        // Light grid — drawn after layout via listener so we know actual width
+        canvas.widthProperty().addListener((obs, ov, nw) -> {
+            canvas.getChildren().removeIf(n -> n instanceof Line && ((Line)n).getStrokeWidth() == 1.0);
+            for (int y = 60; y < canvasH; y += 60) {
+                Line ln = new Line(0, y, nw.doubleValue(), y);
+                ln.setStroke(Color.web(t.accent, 0.035));
+                ln.setStrokeWidth(1.0);
+                canvas.getChildren().add(0, ln);
+            }
+        });
 
-        Label lbTitle = new Label("📊 即時排行榜");
-        lbTitle.setStyle("-fx-font-size:15px;-fx-font-weight:bold;-fx-text-fill:" + t.text + ";");
+        // ── Leaderboard (candy sidebar) ───────────────────────────────────────
+        VBox lb = new VBox(8);
+        lb.setPrefWidth(300);
+        lb.setPadding(new Insets(16, 14, 16, 14));
+        lb.setStyle(
+            "-fx-background-color:" + t.lavender + "33;" +
+            "-fx-border-color:" + t.accentDark + ";-fx-border-width:0 0 0 2.5;");
+
+        HBox lbTitle = new HBox(8, Icons.get("trophy", 20));
+        lbTitle.setAlignment(Pos.CENTER_LEFT);
+        Label lbLbl = new Label("即時排行榜");
+        lbLbl.setStyle("-fx-font-size:14px;-fx-font-weight:bold;-fx-text-fill:" + t.text + ";");
+        lbTitle.getChildren().add(lbLbl);
         VBox lbRows = new VBox(6);
-        leaderboard.getChildren().addAll(lbTitle, new Separator(), lbRows);
+        lb.getChildren().addAll(lbTitle, sep(), lbRows);
 
-        HBox content = new HBox(canvas, leaderboard);
+        HBox content = new HBox(canvas, lb);
         HBox.setHgrow(canvas, Priority.ALWAYS);
         root.setCenter(content);
 
-        // ── Entity tracking ───────────────────────────────────────────────────
-        Map<String, VBox> entityNodes = new HashMap<>();   // id → entity VBox
-        final int[] prevScore = { 0 };
-        final String[] prevTarget = { "GRAY" };
+        // ── Entity & state tracking ───────────────────────────────────────────
+        Map<String, VBox> entityNodes = new HashMap<>();
+        final int[]    prevScore    = {0};
+        final String[] prevTarget   = {"GRAY"};
+        // 倒數覆蓋層的 Label，在 listener 建立後才填入
+        final Label[]  countLblRef  = {null};
+        final int[]    lastShown    = {-1};
 
-        // ── State listener ────────────────────────────────────────────────────
         client.setListener(new GameClient.Listener() {
             @Override public void onConnected(String id) {}
 
             @Override public void onState(GameClient.GameState state) {
+                // 倒數期間：用 Server 的 countdownSeconds 同步顯示數字
+                if ("countdown".equals(state.status())) {
+                    int csec = state.countdownSeconds();
+                    Label cl = countLblRef[0];
+                    if (cl != null && csec > 0) showCountNumber(cl, csec, lastShown, t);
+                    return; // 倒數中不處理其他 UI 更新
+                }
+
                 String tv = state.targetVariant() != null ? state.targetVariant() : "GRAY";
 
-                // ── Update target indicator ───────────────────────────────────
-                boolean targetChanged = !tv.equals(prevTarget[0]);
-                if (targetChanged) {
+                // Target change
+                if (!tv.equals(prevTarget[0])) {
                     prevTarget[0] = tv;
-                    // Image
-                    WritableImage proc = processedCache.get(tv.toLowerCase());
-                    targetIV.setImage(proc);
-                    // Ring colour
-                    targetRing.setStroke(Color.web(VARIANT_COLOR.getOrDefault(tv, "#9E9E9E")));
-                    // Glow on image
-                    targetIV.setEffect(new DropShadow(18,
-                        Color.web(VARIANT_COLOR.getOrDefault(tv, "#9E9E9E"))));
-                    // Text
-                    targetNameLbl.setText(VARIANT_LABEL.getOrDefault(tv, tv));
-                    targetNameLbl.setStyle("-fx-font-size:22px;-fx-font-weight:bold;" +
+                    targetIV.setImage(imgCache.get(tv.toLowerCase()));
+                    targetRing.setStroke(Color.web(VARIANT_BORDER.getOrDefault(tv, "#C0B8AC")));
+                    targetIV.setEffect(new DropShadow(16, Color.web(VARIANT_COLOR.getOrDefault(tv, "#9E9E9E"))));
+                    targetName.setText(VARIANT_LABEL.getOrDefault(tv, tv));
+                    targetName.setStyle("-fx-font-size:18px;-fx-font-weight:bold;" +
                         "-fx-text-fill:" + VARIANT_COLOR.getOrDefault(tv, "#9E9E9E") + ";");
-                    // Section background
                     targetSection.setStyle(
-                        "-fx-background-color:" + VARIANT_BG.getOrDefault(tv, "#F5F5F5") + ";" +
-                        "-fx-background-radius:12;-fx-padding:10 20;" +
-                        "-fx-border-color:" + VARIANT_COLOR.getOrDefault(tv, "#9E9E9E") + ";" +
-                        "-fx-border-radius:12;-fx-border-width:2;");
-
-                    // Flash animation on target section
-                    ScaleTransition flash = new ScaleTransition(Duration.millis(200), targetSection);
-                    flash.setFromX(1.0); flash.setFromY(1.0);
-                    flash.setToX(1.06); flash.setToY(1.06);
-                    flash.setAutoReverse(true); flash.setCycleCount(2);
-                    flash.play();
-
-                    // Update existing entity glows
-                    for (VBox vbox : entityNodes.values()) {
-                        updateEntityGlow(vbox, tv);
-                    }
+                        "-fx-background-color:" + VARIANT_BG.getOrDefault(tv, "#F5F4F0") + ";" +
+                        "-fx-background-radius:18;-fx-border-color:" + VARIANT_BORDER.getOrDefault(tv, "#C0B8AC") + ";" +
+                        "-fx-border-radius:18;-fx-border-width:2.5;");
+                    ScaleTransition fl = new ScaleTransition(Duration.millis(160), targetSection);
+                    fl.setFromX(1.0); fl.setFromY(1.0); fl.setToX(1.05); fl.setToY(1.05);
+                    fl.setAutoReverse(true); fl.setCycleCount(2); fl.play();
+                    entityNodes.values().forEach(v -> updateGlow(v, tv, t));
                 }
 
-                // ── Timer ────────────────────────────────────────────────────
+                // Timer
                 int rem = state.remainingSeconds();
                 timerLabel.setText(String.valueOf(rem));
-                timerLabel.setStyle("-fx-font-size:38px;-fx-font-weight:bold;" +
-                    "-fx-alignment:center;-fx-min-width:70;" +
-                    "-fx-text-fill:" + (rem <= 10 ? "#e74c3c" : t.accent) + ";");
+                timerLabel.setStyle("-fx-font-size:32px;-fx-font-weight:bold;" +
+                    "-fx-alignment:center;-fx-min-width:52;" +
+                    "-fx-text-fill:" + (rem <= 10 ? "#C03030" : t.accentDark) + ";");
 
-                // ── Score ─────────────────────────────────────────────────────
+                // Score
                 GameClient.RemotePlayer self = state.self();
                 if (self != null) {
-                    int newScore = self.score();
-                    if (newScore != prevScore[0]) {
-                        showPopup(canvas, newScore - prevScore[0]);
-                        prevScore[0] = newScore;
+                    int ns = self.score();
+                    if (ns != prevScore[0]) {
+                        int delta = ns - prevScore[0];
+                        prevScore[0] = ns;
                     }
-                    scoreLabel.setText(String.valueOf(newScore));
+                    scoreLabel.setText(String.valueOf(self.score()));
                 }
 
-                // ── Entities (diff) ───────────────────────────────────────────
-                Set<String> activeIds = new HashSet<>();
-                for (GameClient.RemoteEntity e : state.entities()) activeIds.add(e.id());
-
-                entityNodes.entrySet().removeIf(entry -> {
-                    if (!activeIds.contains(entry.getKey())) {
-                        canvas.getChildren().remove(entry.getValue());
+                // Entities (diff)
+                Set<String> alive = new HashSet<>();
+                state.entities().forEach(e -> alive.add(e.id()));
+                entityNodes.entrySet().removeIf(en -> {
+                    if (!alive.contains(en.getKey())) {
+                        canvas.getChildren().remove(en.getValue());
                         return true;
                     }
                     return false;
@@ -206,254 +225,275 @@ public class GameScene {
 
                 for (GameClient.RemoteEntity e : state.entities()) {
                     if (!entityNodes.containsKey(e.id())) {
-                        VBox node = buildEntity(e, tv, client);
-                        double size = e.size();
-                        node.setLayoutX(e.x() * canvas.getPrefWidth()  - size * 0.45);
-                        node.setLayoutY(e.y() * canvas.getPrefHeight() - size * 0.45);
+                        VBox node = buildEntity(e, tv, client, canvas, t);
+                        double sz = e.size();
+                        double cw = canvas.getWidth()  > 0 ? canvas.getWidth()  : canvas.getPrefWidth();
+                        double ch = canvas.getHeight() > 0 ? canvas.getHeight() : canvas.getPrefHeight();
+                        node.setLayoutX(e.x() * cw - sz * 0.45);
+                        node.setLayoutY(e.y() * ch - sz * 0.45);
                         canvas.getChildren().add(node);
                         entityNodes.put(e.id(), node);
                         spawnAnim(node);
                     }
                 }
 
-                // ── Leaderboard ───────────────────────────────────────────────
+                // Leaderboard
                 lbRows.getChildren().clear();
-                String[] medals = {"🥇","🥈","🥉"};
+                String[] rankIcons  = {"crown","medal","medal"};
+                String[] rankColors = {"#C89600","#808080","#8C5828"};
                 for (int i = 0; i < state.players().size(); i++) {
                     GameClient.RemotePlayer p = state.players().get(i);
                     boolean isSelf = p.id().equals(state.selfId());
                     HBox row = new HBox(8);
                     row.setAlignment(Pos.CENTER_LEFT);
                     row.setPadding(new Insets(5, 10, 5, 10));
-                    if (isSelf) row.setStyle("-fx-background-color:" + t.bg + ";-fx-background-radius:8;");
-                    Label rank = new Label(i < 3 ? medals[i] : (i+1) + ".");
-                    rank.setStyle("-fx-font-size:14px;-fx-min-width:28;");
+                    if (isSelf) row.setStyle("-fx-background-color:" + t.accent + "22;-fx-background-radius:10;");
+
+                    javafx.scene.Node rankNode = i < 3
+                        ? Icons.get(rankIcons[i], 18)
+                        : new Label((i+1)+".") {{
+                              setStyle("-fx-font-size:12px;-fx-font-weight:bold;-fx-text-fill:" + t.muted + ";-fx-min-width:20;");
+                          }};
+
                     Label name = new Label(p.name());
-                    name.setStyle("-fx-font-size:13px;-fx-text-fill:" + t.text + ";" +
+                    name.setStyle("-fx-font-size:12px;-fx-text-fill:" + t.text + ";" +
                                   (isSelf ? "-fx-font-weight:bold;" : ""));
                     Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
                     Label sc = new Label(p.score() + "分");
-                    sc.setStyle("-fx-font-size:14px;-fx-font-weight:bold;-fx-text-fill:" + t.accent + ";");
-                    row.getChildren().addAll(rank, name, sp, sc);
+                    sc.setStyle("-fx-font-size:13px;-fx-font-weight:bold;-fx-text-fill:" + t.accentDark + ";");
+                    row.getChildren().addAll(rankNode, name, sp, sc);
                     lbRows.getChildren().add(row);
                 }
 
-                // ── Transition to result ──────────────────────────────────────
                 if ("finished".equals(state.status())) {
+                    CatCatchApp.audio.stopBgm();
                     CatCatchApp.audio.playFinish();
                     app.goResult(state, client, state.isHost());
                 }
             }
 
             @Override public void onError(String msg) {}
-            @Override public void onDisconnected(String reason) {
+            @Override public void onDisconnected(String r) {
                 Platform.runLater(() -> { client.close(); app.goMainMenu(); });
             }
         });
 
-        // Initialise target indicator immediately (shows GRAY until first state arrives)
-        WritableImage initImg = processedCache.get("gray");
-        if (initImg != null) targetIV.setImage(initImg);
+        WritableImage init = imgCache.get("gray");
+        if (init != null) targetIV.setImage(init);
 
-        // ── Countdown overlay (3 → 2 → 1 → GO!) ──────────────────────────────
+        // ── Countdown overlay（與 Server 倒數同步）──────────────────────────────
         StackPane overlay = new StackPane();
-        overlay.setStyle("-fx-background-color:rgba(0,0,0,0.55);");
+        overlay.setStyle("-fx-background-color:rgba(255,240,250,0.85);");
         overlay.setPrefSize(CatCatchApp.WIDTH, CatCatchApp.HEIGHT);
+        // 蓋住遊戲畫布，倒數期間阻擋所有點擊
+        overlay.setPickOnBounds(true);
+
+        VBox countBox = new VBox(12);
+        countBox.setAlignment(Pos.CENTER);
 
         Label countLbl = new Label("3");
-        countLbl.setStyle("-fx-font-size:160px;-fx-font-weight:bold;-fx-text-fill:white;" +
-                          "-fx-effect:dropshadow(gaussian,rgba(0,0,0,0.6),20,0,0,4);");
-        overlay.getChildren().add(countLbl);
+        countLbl.setStyle(countStyle(t.accentDark));
+        countLblRef[0] = countLbl; // 讓 listener 可以更新倒數數字
+        Label readyLbl = new Label("準備好了嗎？");
+        readyLbl.setStyle("-fx-font-size:20px;-fx-font-weight:bold;-fx-text-fill:" + t.muted + ";");
+
+        // 浮動星星裝飾
+        for (int i = 0; i < 8; i++) {
+            double x = 80 + Math.random() * (CatCatchApp.WIDTH - 160);
+            double y = 40  + Math.random() * (CatCatchApp.HEIGHT - 80);
+            Polygon star = KawaiiDeco.miniStar(12 + Math.random() * 10, t.gold, 0.55);
+            star.setTranslateX(x - CatCatchApp.WIDTH / 2.0);
+            star.setTranslateY(y - CatCatchApp.HEIGHT / 2.0);
+            overlay.getChildren().add(star);
+            RotateTransition rt = new RotateTransition(Duration.seconds(4 + Math.random() * 4), star);
+            rt.setByAngle(360); rt.setCycleCount(Animation.INDEFINITE); rt.play();
+        }
+
+        countBox.getChildren().addAll(countLbl, readyLbl);
+        overlay.getChildren().add(countBox);
 
         StackPane fullRoot = new StackPane(root, overlay);
 
-        int[] countVal = { 3 };
+        // 倒數動畫：由 Server STATE 驅動，保持與伺服器同步
+        // 同時啟動本地 Timeline 作為備用（網路延遲時仍能正常顯示）
         Timeline countdown = new Timeline();
         for (int i = 3; i >= 0; i--) {
             final int val = i;
-            KeyFrame kf = new KeyFrame(Duration.seconds(3 - val), e2 -> {
+            countdown.getKeyFrames().add(new KeyFrame(Duration.seconds(3 - val), ev -> {
                 if (val == 0) {
-                    // "GO!" flash then remove
-                    countLbl.setText("GO!");
-                    countLbl.setStyle("-fx-font-size:130px;-fx-font-weight:bold;" +
-                                      "-fx-text-fill:#27AE60;" +
-                                      "-fx-effect:dropshadow(gaussian,rgba(0,0,0,0.6),20,0,0,4);");
+                    // 倒數結束，播放 BGM 並顯示 Go!
+                    CatCatchApp.audio.startBgm();
+                    countLbl.setText("GO！");
+                    countLbl.setStyle(countStyle(t.accent));
+                    readyLbl.setVisible(false);
                     FadeTransition ft = new FadeTransition(Duration.millis(600), overlay);
                     ft.setFromValue(1.0); ft.setToValue(0.0);
-                    ft.setOnFinished(ev -> fullRoot.getChildren().remove(overlay));
+                    ft.setOnFinished(e2 -> fullRoot.getChildren().remove(overlay));
                     ft.play();
                 } else {
-                    countLbl.setText(String.valueOf(val));
-                    countLbl.setStyle("-fx-font-size:160px;-fx-font-weight:bold;-fx-text-fill:white;" +
-                                      "-fx-effect:dropshadow(gaussian,rgba(0,0,0,0.6),20,0,0,4);");
-                    // scale pulse animation
-                    ScaleTransition pulse = new ScaleTransition(Duration.millis(400), countLbl);
-                    pulse.setFromX(1.4); pulse.setFromY(1.4);
-                    pulse.setToX(1.0);   pulse.setToY(1.0);
-                    pulse.setInterpolator(Interpolator.EASE_OUT);
-                    pulse.play();
+                    showCountNumber(countLblRef[0] != null ? countLblRef[0] : countLbl, val, lastShown, t);
                 }
-            });
-            countdown.getKeyFrames().add(kf);
+            }));
         }
         countdown.play();
 
-        return new Scene(fullRoot, CatCatchApp.WIDTH, CatCatchApp.HEIGHT);
+        return new Scene(fullRoot);
     }
 
-    // ── Entity node builder ───────────────────────────────────────────────────
+    // ── Entity ────────────────────────────────────────────────────────────────
 
     private static VBox buildEntity(GameClient.RemoteEntity e, String targetVariant,
-                                     GameClient client) {
+                                     GameClient client, Pane canvas, Theme t) {
         boolean isDog = "DOG".equals(e.kind());
         String variant = e.variant();
         double size = e.size();
-        double imgSize = size * 0.88;
+        double imgSize = size * 0.84;
 
-        // Image container (StackPane for glow control)
         StackPane imgPane = new StackPane();
         imgPane.setPrefSize(imgSize, imgSize);
         imgPane.setMaxSize(imgSize, imgSize);
 
         String cacheKey = isDog ? "dog" : variant.toLowerCase();
-        WritableImage proc = processedCache.get(cacheKey);
+        WritableImage proc = imgCache.get(cacheKey);
+
+        // Pastel background circle
+        Circle bg = new Circle(imgSize * 0.50);
+        bg.setFill(Color.web(isDog ? "#FFCDD2" : VARIANT_BG.getOrDefault(variant, "#F5F4F0")));
+        bg.setStroke(Color.web(isDog ? "#C03030" : VARIANT_BORDER.getOrDefault(variant, "#C0B8AC")));
+        bg.setStrokeWidth(2.5);
 
         if (proc != null) {
             ImageView iv = new ImageView(proc);
-            iv.setFitWidth(imgSize);
-            iv.setFitHeight(imgSize);
+            iv.setFitWidth(imgSize * 0.88);
+            iv.setFitHeight(imgSize * 0.88);
             iv.setPreserveRatio(true);
-            imgPane.getChildren().add(iv);
+            imgPane.getChildren().addAll(bg, iv);
         } else {
-            // Fallback: coloured circle + emoji
-            Circle circle = new Circle(imgSize / 2);
-            circle.setFill(Color.web(isDog ? "#FFF3E0" : VARIANT_BG.getOrDefault(variant, "#F5F5F5")));
-            circle.setStroke(Color.web(isDog ? "#FF7043" : VARIANT_COLOR.getOrDefault(variant, "#9E9E9E")));
-            circle.setStrokeWidth(3);
-            Label emoji = new Label(isDog ? "🐶" : "🐱");
-            emoji.setStyle("-fx-font-size:" + (imgSize * 0.42) + "px;");
-            imgPane.getChildren().addAll(circle, emoji);
+            Label txt = new Label(isDog ? "犬" : "猫");
+            txt.setStyle("-fx-font-size:" + (imgSize * 0.32) + "px;-fx-font-weight:bold;" +
+                         "-fx-text-fill:" + (isDog ? "#C03030" : VARIANT_COLOR.getOrDefault(variant, "#9E9E9E")) + ";");
+            imgPane.getChildren().addAll(bg, txt);
         }
 
-        // Label
-        Label label = new Label(isDog ? "⚠ 地雷" : VARIANT_LABEL.getOrDefault(variant, variant));
+        // Kawaii label tag
+        Label label = new Label(isDog ? "地雷！" : VARIANT_LABEL.getOrDefault(variant, variant));
         label.setStyle("-fx-font-size:11px;-fx-font-weight:bold;-fx-alignment:center;" +
-            "-fx-text-fill:" + (isDog ? "#FF7043" : VARIANT_COLOR.getOrDefault(variant, "#777")) + ";");
+            "-fx-background-color:" + (isDog ? "#FFCDD2" : VARIANT_BG.getOrDefault(variant, "#F5F4F0")) + ";" +
+            "-fx-text-fill:" + (isDog ? "#C03030" : VARIANT_COLOR.getOrDefault(variant, "#888")) + ";" +
+            "-fx-background-radius:10;-fx-border-color:" + (isDog ? "#C03030" : VARIANT_BORDER.getOrDefault(variant, "#C0B8AC")) + ";" +
+            "-fx-border-radius:10;-fx-border-width:1.5;-fx-padding:2 8;");
 
-        VBox vbox = new VBox(3, imgPane, label);
+        VBox vbox = new VBox(4, imgPane, label);
         vbox.setAlignment(Pos.CENTER);
-        // Store variant in userData for glow updates
         vbox.setUserData(isDog ? "DOG" : variant);
 
-        // Apply initial glow
-        updateEntityGlow(vbox, targetVariant);
+        updateGlow(vbox, targetVariant, t);
 
-        // Click handler
         vbox.setOnMouseClicked(evt -> {
             vbox.setOnMouseClicked(null);
             client.sendClick(e.id());
             clickAnim(vbox);
-            if (isDog) CatCatchApp.audio.playDog();
-            else if (variant.equals(targetVariant)) CatCatchApp.audio.playMeow();
-            else CatCatchApp.audio.playWrong();
+            double cx = vbox.getLayoutX() + vbox.getBoundsInLocal().getWidth() / 2;
+            double cy = vbox.getLayoutY() + 10;
+            if (isDog) {
+                CatCatchApp.audio.playDog();
+                KawaiiDeco.wrongClickOops(canvas, cx, cy, -15);
+            } else if (variant.equals(targetVariant)) {
+                CatCatchApp.audio.playMeow();
+                KawaiiDeco.correctClickBurst(canvas, cx, cy, 10);
+            } else {
+                CatCatchApp.audio.playWrong();
+                KawaiiDeco.wrongClickOops(canvas, cx, cy, -5);
+            }
         });
         vbox.setCursor(javafx.scene.Cursor.HAND);
-
         return vbox;
     }
 
-    // ── Glow helper ───────────────────────────────────────────────────────────
-
-    private static void updateEntityGlow(VBox vbox, String currentTarget) {
+    private static void updateGlow(VBox vbox, String currentTarget, Theme t) {
         if (vbox.getChildren().isEmpty()) return;
         javafx.scene.Node imgPane = vbox.getChildren().get(0);
         String variant = vbox.getUserData() != null ? vbox.getUserData().toString() : "";
-        boolean isDog = "DOG".equals(variant);
+        boolean isDog   = "DOG".equals(variant);
         boolean isTarget = !isDog && variant.equals(currentTarget);
 
         if (isDog) {
-            imgPane.setEffect(new DropShadow(8, Color.web("#FF7043")));
+            imgPane.setEffect(new DropShadow(10, Color.web("#C03030", 0.55)));
         } else if (isTarget) {
-            DropShadow glow = new DropShadow(22,
-                Color.web(VARIANT_COLOR.getOrDefault(variant, "#9E9E9E")));
-            glow.setSpread(0.35);
+            DropShadow glow = new DropShadow(20, Color.web(VARIANT_COLOR.getOrDefault(variant, "#9E9E9E")));
+            glow.setSpread(0.28);
             imgPane.setEffect(glow);
         } else {
-            imgPane.setEffect(new DropShadow(6, Color.rgb(0, 0, 0, 0.25)));
+            imgPane.setEffect(new DropShadow(5, Color.rgb(100, 60, 60, 0.15)));
         }
     }
 
     // ── Animations ────────────────────────────────────────────────────────────
 
     private static void spawnAnim(javafx.scene.Node node) {
-        ScaleTransition st = new ScaleTransition(Duration.millis(200), node);
-        st.setFromX(0.1); st.setFromY(0.1);
-        st.setToX(1.0);   st.setToY(1.0);
-        st.setInterpolator(Interpolator.EASE_OUT);
-        st.play();
+        ScaleTransition st = new ScaleTransition(Duration.millis(240), node);
+        st.setFromX(0.05); st.setFromY(0.05); st.setToX(1.0); st.setToY(1.0);
+        st.setInterpolator(Interpolator.EASE_OUT); st.play();
     }
 
     private static void clickAnim(javafx.scene.Node node) {
-        ScaleTransition st = new ScaleTransition(Duration.millis(120), node);
-        st.setFromX(1.0); st.setFromY(1.0);
-        st.setToX(1.3);   st.setToY(1.3);
-        st.setAutoReverse(true); st.setCycleCount(2);
-        st.play();
+        ScaleTransition st = new ScaleTransition(Duration.millis(110), node);
+        st.setFromX(1.0); st.setFromY(1.0); st.setToX(1.26); st.setToY(1.26);
+        st.setAutoReverse(true); st.setCycleCount(2); st.play();
     }
 
-    private static void showPopup(Pane canvas, int delta) {
-        String sign = delta > 0 ? "+" : "";
-        Label popup = new Label(sign + delta);
-        popup.setStyle("-fx-font-size:26px;-fx-font-weight:bold;" +
-            "-fx-text-fill:" + (delta > 0 ? "#27AE60" : "#e74c3c") + ";" +
-            "-fx-effect:dropshadow(gaussian,rgba(0,0,0,0.35),5,0,0,2);");
-
-        double cx = canvas.getPrefWidth() / 2 + (Math.random() - 0.5) * 200;
-        popup.setLayoutX(cx);
-        popup.setLayoutY(canvas.getPrefHeight() / 2 - 60);
-        canvas.getChildren().add(popup);
-
-        ParallelTransition pt = new ParallelTransition(popup,
-            translate(popup, -70), fade(popup));
-        pt.setOnFinished(e -> canvas.getChildren().remove(popup));
-        pt.play();
+    private static Separator sep() {
+        Separator s = new Separator();
+        s.setStyle("-fx-opacity:0.30;");
+        return s;
     }
 
-    private static TranslateTransition translate(javafx.scene.Node n, double byY) {
-        TranslateTransition tt = new TranslateTransition(Duration.millis(750), n);
-        tt.setByY(byY);
-        return tt;
+    /** 顯示倒數數字並播放縮放動畫；同一個數字不重複跳動。 */
+    private static void showCountNumber(Label lbl, int val, int[] lastShown, Theme t) {
+        if (lastShown[0] == val) return; // 避免同一秒重複觸發
+        lastShown[0] = val;
+        lbl.setText(String.valueOf(val));
+        lbl.setStyle(countStyle(t.accentDark));
+        ScaleTransition pulse = new ScaleTransition(Duration.millis(360), lbl);
+        pulse.setFromX(1.55); pulse.setFromY(1.55);
+        pulse.setToX(1.0);   pulse.setToY(1.0);
+        pulse.setInterpolator(Interpolator.EASE_OUT);
+        pulse.play();
     }
 
-    private static FadeTransition fade(javafx.scene.Node n) {
-        FadeTransition ft = new FadeTransition(Duration.millis(750), n);
-        ft.setFromValue(1.0); ft.setToValue(0.0);
-        return ft;
+    /** 倒數數字的統一樣式。 */
+    private static String countStyle(String color) {
+        return "-fx-font-size:138px;-fx-font-weight:bold;" +
+               "-fx-text-fill:" + color + ";" +
+               "-fx-effect:dropshadow(gaussian,rgba(230,130,160,0.38),20,0,2,5);";
     }
 
-    // ── Image loading & processing ────────────────────────────────────────────
+    // ── Image preload ─────────────────────────────────────────────────────────
 
     private static void preloadImages() {
-        if (!processedCache.isEmpty()) return; // already loaded
-        String[][] specs = {
-            {"gray",  "assets/cat-gray.jpg"},
-            {"gold",  "assets/cat-gold.jpg"},
-            {"snow",  "assets/cat-snow.jpg"},
-            {"dog",   "assets/dog.jpg"}
+        if (!imgCache.isEmpty()) return;
+        // 每個 variant 可設多個候選路徑，依序嘗試直到載入成功
+        String[][][] specs = {
+            {{"gray"},  {"assets/茄子貓貓去背.png", "assets/cat-gray.jpg"}},
+            {{"gold"},  {"assets/橘貓去背.png",     "assets/cat-gold.jpg"}},
+            {{"snow"},  {"assets/蘋果貓貓去背.png", "assets/cat-snow.jpg"}},
+            {{"dog"},   {"assets/狗狗地雷去背.png", "assets/dog.jpg"}},
         };
-        for (String[] spec : specs) {
-            String key  = spec[0];
-            String path = spec[1];
-            File f = new File(path);
-            if (!f.exists()) continue;
-            try (java.io.FileInputStream fis = new java.io.FileInputStream(f)) {
-                javafx.scene.image.Image raw = new javafx.scene.image.Image(fis);
-                if (!raw.isError()) {
-                    int w = (int) raw.getWidth(), h = (int) raw.getHeight();
-                    WritableImage wi = new WritableImage(raw.getPixelReader(), 0, 0, w, h);
-                    processedCache.put(key, wi);
-                }
-            } catch (Exception ignored) {}
+        for (String[][] spec : specs) {
+            String key = spec[0][0];
+            for (String path : spec[1]) {
+                File f = new File(path);
+                if (!f.exists()) continue;
+                try (java.io.FileInputStream fis = new java.io.FileInputStream(f)) {
+                    javafx.scene.image.Image raw = new javafx.scene.image.Image(fis);
+                    if (!raw.isError()) {
+                        imgCache.put(key, new WritableImage(
+                            raw.getPixelReader(), 0, 0,
+                            (int) raw.getWidth(), (int) raw.getHeight()));
+                        break; // 載入成功，不嘗試後備路徑
+                    }
+                } catch (Exception ignored) {}
+            }
         }
     }
 }

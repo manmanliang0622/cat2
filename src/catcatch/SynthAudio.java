@@ -1,7 +1,12 @@
 package catcatch;
 
+import java.io.File;
+import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import javafx.scene.media.Media;
+import javafx.scene.media.MediaPlayer;
+import javafx.util.Duration;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.LineUnavailableException;
@@ -9,8 +14,10 @@ import javax.sound.sampled.SourceDataLine;
 
 final class SynthAudio {
     private static final float SAMPLE_RATE = 22_050f;
-    private volatile boolean enabled = true;
-    private volatile float volume = 0.7f;
+    private volatile boolean musicEnabled = true;
+    private volatile boolean sfxEnabled   = true;
+    private volatile float   volume       = 0.7f;
+    private final Random rng = new Random();
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "catcatch-audio");
@@ -18,19 +25,110 @@ final class SynthAudio {
         return t;
     });
 
-    void setEnabled(boolean enabled) { this.enabled = enabled; }
-    void setVolume(float v) { this.volume = Math.max(0f, Math.min(1f, v)); }
-    boolean isEnabled() { return enabled; }
-    float getVolume() { return volume; }
+    // MP3 MediaPlayers
+    private final MediaPlayer[] meowPlayers;
+    private final MediaPlayer   barkPlayer;
+    private final MediaPlayer   bgmPlayer;
 
-    void playMeow()    { if (enabled) play(this::buildMeow); }
-    void playBark()    { if (enabled) play(this::buildBark); }
-    void playStart()   { if (enabled) play(() -> sequence(note(660,0.10,0.24),silence(0.03),note(880,0.12,0.26),silence(0.03),note(1050,0.18,0.28))); }
-    void playSuccess() { if (enabled) play(() -> sequence(note(720,0.06,0.20),note(920,0.08,0.26))); }
-    void playWrong()   { if (enabled) play(() -> sequence(note(300,0.09,0.18),note(220,0.12,0.18))); }
-    void playDog()     { if (enabled) play(() -> sequence(note(200,0.07,0.30),note(160,0.10,0.25))); }
-    void playFinish()  { if (enabled) play(() -> sequence(note(523,0.09,0.22),silence(0.02),note(659,0.10,0.24),silence(0.02),note(784,0.16,0.27))); }
-    void shutdown()    { executor.shutdownNow(); }
+    SynthAudio() {
+        String base = new File("assets").getAbsolutePath();
+        meowPlayers = new MediaPlayer[3];
+        for (int i = 0; i < 3; i++) {
+            meowPlayers[i] = loadMedia(base + "/meow" + (i + 1) + ".mp3");
+        }
+        barkPlayer = loadMedia(base + "/bark.mp3");
+        MediaPlayer bgm = loadMedia(base + "/bgm.mp3");
+        if (bgm != null) {
+            bgm.setCycleCount(MediaPlayer.INDEFINITE);
+            bgm.setVolume(volume * 0.5);
+        }
+        bgmPlayer = bgm;
+    }
+
+    private MediaPlayer loadMedia(String path) {
+        File f = new File(path);
+        if (!f.exists()) return null;
+        try {
+            return new MediaPlayer(new Media(f.toURI().toString()));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    // ── Getters / setters ─────────────────────────────────────────────────────
+
+    void setMusicEnabled(boolean on) {
+        musicEnabled = on;
+        if (bgmPlayer == null) return;
+        if (on) {
+            bgmPlayer.play();
+        } else {
+            bgmPlayer.pause();
+        }
+    }
+
+    void setSfxEnabled(boolean on) { sfxEnabled = on; }
+
+    /** Legacy single-switch used by old code paths — keeps both in sync. */
+    void setEnabled(boolean on) { setMusicEnabled(on); setSfxEnabled(on); }
+
+    void setVolume(float v) {
+        volume = Math.max(0f, Math.min(1f, v));
+        if (bgmPlayer != null) bgmPlayer.setVolume(volume * 0.5);
+    }
+
+    boolean isMusicEnabled() { return musicEnabled; }
+    boolean isSfxEnabled()   { return sfxEnabled; }
+    boolean isEnabled()      { return sfxEnabled; }
+    float   getVolume()      { return volume; }
+
+    // ── BGM ───────────────────────────────────────────────────────────────────
+
+    /** Start BGM from the beginning (or resume if already playing). */
+    void startBgm() {
+        if (!musicEnabled || bgmPlayer == null) return;
+        MediaPlayer.Status status = bgmPlayer.getStatus();
+        if (status == MediaPlayer.Status.PLAYING) return;
+        if (status == MediaPlayer.Status.STOPPED || status == MediaPlayer.Status.READY) {
+            bgmPlayer.seek(Duration.ZERO);
+        }
+        bgmPlayer.play();
+    }
+
+    void stopBgm() {
+        if (bgmPlayer != null) bgmPlayer.stop();
+    }
+
+    // ── SFX ───────────────────────────────────────────────────────────────────
+
+    void playMeow() {
+        if (!sfxEnabled) return;
+        MediaPlayer p = meowPlayers[rng.nextInt(meowPlayers.length)];
+        if (p != null) {
+            p.stop(); p.seek(Duration.ZERO); p.setVolume(volume); p.play();
+        } else {
+            play(this::buildMeow);
+        }
+    }
+
+    void playBark() {
+        if (!sfxEnabled) return;
+        if (barkPlayer != null) {
+            barkPlayer.stop(); barkPlayer.seek(Duration.ZERO); barkPlayer.setVolume(volume); barkPlayer.play();
+        } else {
+            play(this::buildBark);
+        }
+    }
+
+    void playDog()     { playBark(); }
+    void playStart()   { if (sfxEnabled) play(() -> sequence(note(660,0.10,0.24),silence(0.03),note(880,0.12,0.26),silence(0.03),note(1050,0.18,0.28))); }
+    void playSuccess() { if (sfxEnabled) play(() -> sequence(note(720,0.06,0.20),note(920,0.08,0.26))); }
+    void playWrong()   { if (sfxEnabled) play(() -> sequence(note(300,0.09,0.18),note(220,0.12,0.18))); }
+    void playFinish()  { if (sfxEnabled) play(() -> sequence(note(523,0.09,0.22),silence(0.02),note(659,0.10,0.24),silence(0.02),note(784,0.16,0.27))); }
+
+    void shutdown() { stopBgm(); executor.shutdownNow(); }
+
+    // ── Synth helpers ─────────────────────────────────────────────────────────
 
     private void play(SampleProducer producer) {
         executor.submit(() -> writeSamples(producer.produce()));

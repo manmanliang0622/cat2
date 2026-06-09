@@ -28,22 +28,47 @@ public class GameServer {
         int port = DEFAULT_PORT;
         if (args.length > 0) port = Integer.parseInt(args[0]);
         System.out.println("CatCatch server starting on port " + port + " …");
-        new GameServer().accept(new ServerSocket(port));
+        ServerSocket ss = new ServerSocket();
+        ss.setReuseAddress(true);
+        ss.bind(new InetSocketAddress("0.0.0.0", port));
+        new GameServer().accept(ss);
     }
 
     public static EmbeddedServer startEmbedded(int port) throws IOException {
-        ServerSocket ss = new ServerSocket(port);
+        ServerSocket ss = new ServerSocket();
+        ss.setReuseAddress(true);
+        ss.bind(new InetSocketAddress("0.0.0.0", port));
         GameServer server = new GameServer();
         Thread t = new Thread(() -> {
             try { server.accept(ss); } catch (IOException ignored) {}
         }, "catcatch-server");
         t.setDaemon(true);
         t.start();
-        return new EmbeddedServer(ss);
+        return new EmbeddedServer(ss, server);
     }
 
-    public record EmbeddedServer(ServerSocket socket) {
+    public record EmbeddedServer(ServerSocket socket, GameServer server) {
         public void stop() { try { socket.close(); } catch (IOException ignored) {} }
+        /** 傳回目前所有可被搜尋到的房間資訊（供 UDP Discovery 使用）。 */
+        public List<RoomInfo> getAvailableRooms() { return server.getAvailableRooms(); }
+    }
+
+    /** 傳回所有非空、非遊戲中（或遊戲中）的房間資訊，供 RoomDiscoveryServer 使用。 */
+    List<RoomInfo> getAvailableRooms() {
+        List<RoomInfo> result = new ArrayList<>();
+        synchronized (rooms) {
+            for (Room r : rooms.values()) {
+                synchronized (r) {
+                    if (r.players.isEmpty()) continue;
+                    String hostName = (r.hostId != null && r.players.containsKey(r.hostId))
+                            ? r.players.get(r.hostId).name : "未知";
+                    result.add(new RoomInfo(r.code, hostName, "",
+                            DEFAULT_PORT, r.players.size(),
+                            r.status == RoomStatus.PLAYING));
+                }
+            }
+        }
+        return result;
     }
 
     // ── Accept loop ───────────────────────────────────────────────────────────
@@ -154,13 +179,34 @@ public class GameServer {
     private String onStart(Room room, Player player) {
         if (!player.id.equals(room.hostId))
             return Protocol.encode("ERROR", "message", "只有房主可以開始遊戲。");
+        if (room.status != RoomStatus.LOBBY)
+            return Protocol.encode("ERROR", "message", "遊戲狀態不正確，請稍候。");
         if (room.players.size() < 1 || room.players.values().stream().anyMatch(p -> !p.ready))
             return Protocol.encode("ERROR", "message", "請等所有玩家都準備完成。");
-        startGame(room);
+        startCountdown(room);
         return Protocol.encode("OK", "message", room.message);
     }
 
+    /**
+     * 開始 3 秒倒數（COUNTDOWN 狀態）。
+     * 倒數期間不生成貓咪、不計算分數；3 秒後自動呼叫 startGame()。
+     */
+    private void startCountdown(Room room) {
+        room.status = RoomStatus.COUNTDOWN;
+        room.countdownEndMillis = System.currentTimeMillis() + 3_000L;
+        room.message = "遊戲即將開始！";
+        room.countdownTask = scheduler.schedule(() -> {
+            synchronized (room) {
+                if (room.status == RoomStatus.COUNTDOWN) startGame(room);
+            }
+            broadcastState(room);
+        }, 3, TimeUnit.SECONDS);
+    }
+
     private String onClick(Room room, Player player, String entityId) {
+        // 倒數期間靜默忽略點擊，不扣分也不報錯
+        if (room.status == RoomStatus.COUNTDOWN)
+            return Protocol.encode("OK", "message", "");
         if (room.status != RoomStatus.PLAYING)
             return Protocol.encode("ERROR", "message", "遊戲尚未開始。");
         Entity entity = room.entities.remove(entityId);
@@ -244,22 +290,110 @@ public class GameServer {
             Math.ceil((room.gameEndMillis - System.currentTimeMillis()) / 1_000.0));
         int cats = Math.min(8, 4 + elapsed / 10);
         int dogs = (4 + elapsed / 10) >= 6 ? 2 : 1;
+        int total = cats + dogs;
+
+        // 網格分區生成座標，確保貓咪均勻分散、不重疊
+        List<double[]> positions = generateGridPositions(total, room.entities);
+        int posIdx = 0;
 
         for (int i = 0; i < cats; i++) {
             String variant = RANDOM.nextDouble() < 0.35 ? room.targetVariant : randomVariant(room.targetVariant);
             String id = nextId("c");
+            double[] pos = posIdx < positions.size() ? positions.get(posIdx++) : fallbackPos();
             room.entities.put(id, new Entity(id, EntityKind.CAT, variant,
-                0.06 + RANDOM.nextDouble() * 0.80, 0.06 + RANDOM.nextDouble() * 0.76,
+                pos[0], pos[1],
                 100 + RANDOM.nextDouble() * 30,
                 System.currentTimeMillis() + 2800 + RANDOM.nextInt(1000)));
         }
         for (int i = 0; i < dogs; i++) {
             String id = nextId("d");
+            double[] pos = posIdx < positions.size() ? positions.get(posIdx++) : fallbackPos();
             room.entities.put(id, new Entity(id, EntityKind.DOG, "",
-                0.06 + RANDOM.nextDouble() * 0.80, 0.06 + RANDOM.nextDouble() * 0.76,
+                pos[0], pos[1],
                 105 + RANDOM.nextDouble() * 25,
                 System.currentTimeMillis() + 2800 + RANDOM.nextInt(1000)));
         }
+    }
+
+    /**
+     * 網格分區 + 格內隨機偏移 + 最小距離檢查，
+     * 生成均勻分散的正規化座標（0.0~1.0）。
+     *
+     * 步驟：
+     *   1. 將畫面切成 COLS × ROWS 個格子並打亂順序
+     *   2. 依序取格，在格內加小偏移作為候選位置
+     *   3. 若候選點與現有實體距離 < MIN_DIST 則跳過此格
+     *   4. 格子用完後若還不夠，以寬鬆隨機補足
+     */
+    private List<double[]> generateGridPositions(int count, Map<String, Entity> existing) {
+        final int    COLS     = 5;    // 欄數（橫向）
+        final int    ROWS     = 3;    // 列數（縱向）
+        final double MARGIN_X = 0.07; // 左右邊界留白（正規化）
+        final double MARGIN_Y = 0.08; // 上下邊界留白
+        final double CELL_W   = (1.0 - 2 * MARGIN_X) / COLS;
+        final double CELL_H   = (1.0 - 2 * MARGIN_Y) / ROWS;
+        // 格內最大抖動比例（讓位置看起來自然，不完全置中）
+        final double JITTER   = 0.32;
+        // 最小距離（正規化；約等於畫面寬度的 13%，通常 >120px）
+        final double MIN_DIST = 0.13;
+
+        // 收集場上現有實體的位置
+        List<double[]> occupied = new ArrayList<>();
+        for (Entity e : existing.values()) occupied.add(new double[]{e.x(), e.y()});
+
+        // 建立格子清單並打亂
+        List<int[]> cells = new ArrayList<>();
+        for (int r = 0; r < ROWS; r++)
+            for (int c = 0; c < COLS; c++)
+                cells.add(new int[]{r, c});
+        Collections.shuffle(cells, RANDOM);
+
+        List<double[]> result = new ArrayList<>();
+        for (int[] cell : cells) {
+            if (result.size() >= count) break;
+
+            // 格子中心 + 隨機偏移
+            double cx = MARGIN_X + (cell[1] + 0.5) * CELL_W;
+            double cy = MARGIN_Y + (cell[0] + 0.5) * CELL_H;
+            double x  = cx + (RANDOM.nextDouble() * 2 - 1) * CELL_W * JITTER;
+            double y  = cy + (RANDOM.nextDouble() * 2 - 1) * CELL_H * JITTER;
+
+            // 夾在安全邊界內
+            x = Math.max(MARGIN_X, Math.min(1.0 - MARGIN_X, x));
+            y = Math.max(MARGIN_Y, Math.min(1.0 - MARGIN_Y, y));
+
+            // 距離檢查：不能與現有位置太近
+            if (tooClose(x, y, occupied, MIN_DIST)) continue;
+
+            result.add(new double[]{x, y});
+            occupied.add(new double[]{x, y});
+        }
+
+        // 格子不足時用較寬鬆的隨機補足（最多嘗試 40 次）
+        for (int tries = 0; result.size() < count && tries < 40; tries++) {
+            double[] p = fallbackPos();
+            if (!tooClose(p[0], p[1], occupied, MIN_DIST * 0.65)) {
+                result.add(p);
+                occupied.add(p);
+            }
+        }
+
+        return result;
+    }
+
+    /** 判斷 (x, y) 是否與 occupied 中任何一點距離 < minDist。 */
+    private static boolean tooClose(double x, double y, List<double[]> occupied, double minDist) {
+        for (double[] o : occupied) {
+            double dx = x - o[0], dy = y - o[1];
+            if (dx * dx + dy * dy < minDist * minDist) return true;
+        }
+        return false;
+    }
+
+    /** 在邊界內完全隨機的備用位置（格子用完時才呼叫）。 */
+    private double[] fallbackPos() {
+        return new double[]{0.07 + RANDOM.nextDouble() * 0.86,
+                            0.08 + RANDOM.nextDouble() * 0.84};
     }
 
     private void finishGame(Room room, String msg) {
@@ -297,6 +431,9 @@ public class GameServer {
         }
         if (room.status == RoomStatus.PLAYING && room.players.size() == 1)
             finishGame(room, "其他玩家離線，提前結算。");
+        else if (room.status == RoomStatus.COUNTDOWN)
+            // 倒數期間有玩家離線，取消倒數並返回大廳
+            returnLobby(room, false, player.name + " 離線，倒數取消。");
         else
             room.message = player.name + " 已離開房間。";
     }
@@ -330,11 +467,13 @@ public class GameServer {
             eRows.add(new String[]{ e.id, e.kind.name(), e.variant,
                 Double.toString(e.x), Double.toString(e.y), Double.toString(e.size) });
 
-        int remaining = 0, returnSec = 0;
+        int remaining = 0, returnSec = 0, countdownSec = 0;
         if (room.status == RoomStatus.PLAYING)
             remaining = (int)Math.max(0, Math.ceil((room.gameEndMillis - System.currentTimeMillis()) / 1_000.0));
         else if (room.status == RoomStatus.FINISHED)
             returnSec = (int)Math.max(0, Math.ceil((room.returnAtMillis - System.currentTimeMillis()) / 1_000.0));
+        else if (room.status == RoomStatus.COUNTDOWN)
+            countdownSec = (int)Math.max(0, Math.ceil((room.countdownEndMillis - System.currentTimeMillis()) / 1_000.0));
 
         return Protocol.encode("STATE",
             "selfId", self.id,
@@ -344,6 +483,7 @@ public class GameServer {
             "target", room.targetVariant,
             "remaining", Integer.toString(remaining),
             "returnSeconds", Integer.toString(returnSec),
+            "countdownSeconds", Integer.toString(countdownSec),
             "message", room.message,
             "players", Protocol.encodeList(pRows),
             "objects", Protocol.encodeList(eRows));
@@ -444,20 +584,21 @@ public class GameServer {
         final Set<String> replayVotes = ConcurrentHashMap.newKeySet();
         RoomStatus status = RoomStatus.LOBBY;
         String hostId, targetVariant = "GRAY", message = "等待玩家準備。";
-        long gameEndMillis, returnAtMillis;
-        ScheduledFuture<?> tickTask, spawnTask, targetTask;
+        long gameEndMillis, returnAtMillis, countdownEndMillis;
+        ScheduledFuture<?> tickTask, spawnTask, targetTask, countdownTask;
 
         Room(String code) { this.code = code; }
 
         void shutdownPlay() {
-            if (spawnTask != null) { spawnTask.cancel(false); spawnTask = null; }
+            if (spawnTask  != null) { spawnTask.cancel(false);  spawnTask  = null; }
             if (targetTask != null) { targetTask.cancel(false); targetTask = null; }
         }
-        void shutdownTick() { if (tickTask != null) { tickTask.cancel(false); tickTask = null; } }
-        void shutdownAll() { shutdownPlay(); shutdownTick(); }
+        void shutdownTick()      { if (tickTask     != null) { tickTask.cancel(false);     tickTask     = null; } }
+        void shutdownCountdown() { if (countdownTask != null) { countdownTask.cancel(false); countdownTask = null; } }
+        void shutdownAll()       { shutdownPlay(); shutdownTick(); shutdownCountdown(); }
     }
 
-    private enum RoomStatus { LOBBY, PLAYING, FINISHED }
+    private enum RoomStatus { LOBBY, COUNTDOWN, PLAYING, FINISHED }
     private enum EntityKind  { CAT, DOG }
 
     private record Entity(String id, EntityKind kind, String variant,

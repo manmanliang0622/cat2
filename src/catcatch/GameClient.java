@@ -166,6 +166,7 @@ final class GameClient {
             fields.get("target"),
             Integer.parseInt(fields.getOrDefault("remaining", "0")),
             Integer.parseInt(fields.getOrDefault("returnSeconds", "0")),
+            Integer.parseInt(fields.getOrDefault("countdownSeconds", "0")),
             fields.get("message"), players, entities);
     }
 
@@ -173,6 +174,7 @@ final class GameClient {
 
     record GameState(String selfId, String roomCode, String status, String hostId,
                      String targetVariant, int remainingSeconds, int returnSeconds,
+                     int countdownSeconds,
                      String message, List<RemotePlayer> players, List<RemoteEntity> entities) {
         RemotePlayer self() {
             return players.stream().filter(p -> p.id().equals(selfId)).findFirst().orElse(null);

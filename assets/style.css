@@ -1,0 +1,41 @@
+/*
+ * 抓小貓 – 全域字體 CSS
+ * 載入 jf-openhuninn 字體後，所有 JavaFX 節點皆繼承這個圓潤可愛的字體。
+ * inline -fx-font-size / -fx-font-weight 仍可照常覆蓋；
+ * 只要不明確設定 -fx-font-family，就會自動繼承這裡的設定。
+ */
+
+.root {
+    -fx-font-family: "jf-openhuninn";
+}
+
+/* Label */
+.label {
+    -fx-font-family: "jf-openhuninn";
+}
+
+/* 按鈕文字 */
+.button {
+    -fx-font-family: "jf-openhuninn";
+}
+
+/* 輸入框 */
+.text-field {
+    -fx-font-family: "jf-openhuninn";
+}
+
+/* ScrollPane 內的文字繼承 */
+.scroll-pane .viewport {
+    -fx-font-family: "jf-openhuninn";
+}
+
+/* Dialog / Alert */
+.dialog-pane {
+    -fx-font-family: "jf-openhuninn";
+}
+.dialog-pane .content.label {
+    -fx-font-family: "jf-openhuninn";
+}
+.dialog-pane .header-panel .label {
+    -fx-font-family: "jf-openhuninn";
+}
