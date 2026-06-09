@@ -31,11 +31,12 @@
 
 ## 環境需求
 
-| 項目 | 版本 |
+| 項目 | 說明 |
 |------|------|
-| Java JDK | 17 以上 |
-| JavaFX SDK | 21（macOS 版請自行安裝至 `~/Documents/javafx-sdk-21.0.11/`） |
-| 作業系統 | macOS（`run_macos.sh`）/ Windows（`run_javafx.ps1`） |
+| Java JDK | **17 以上**，需加入 PATH（[下載 Adoptium](https://adoptium.net/)） |
+| JavaFX | Windows：已內建於 `lib/`，**不需額外安裝** |
+| JavaFX | macOS：需安裝 SDK 21 至 `~/Documents/javafx-sdk-21.0.11/` |
+| 作業系統 | Windows 10/11（雙擊 `啟動遊戲.bat`）/ macOS（`bash run_macos.sh`） |
 | 網路 | 同一 Wi-Fi / 有線 LAN，或 ZeroTier 虛擬網路 |
 
 ---
@@ -85,17 +86,33 @@ catcat/
 
 ## 快速開始
 
+### Windows（推薦）
+
+**方法一：直接雙擊**
+
+1. 安裝 [JDK 17+](https://adoptium.net/)（安裝時勾選「Add to PATH」）
+2. 從 GitHub 下載整個專案（Download ZIP 或 `git clone`）
+3. 解壓縮後，**雙擊 `啟動遊戲.bat`**
+4. 第一次會自動編譯，之後直接執行
+
+**方法二：PowerShell**
+
+```powershell
+# 若出現「執行原則」錯誤，先執行這行（只需一次）
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+
+.\run_javafx.ps1
+```
+
 ### macOS
 
 ```bash
 bash run_macos.sh
 ```
 
-### Windows
+> 需先安裝 JavaFX SDK 21 至 `~/Documents/javafx-sdk-21.0.11/`
 
-```powershell
-.\run_javafx.ps1
-```
+---
 
 > 不需要另外開伺服器！點「建立房間」時，遊戲會自動在背景啟動伺服器，並開啟 UDP 探索服務讓其他玩家搜尋到。
 

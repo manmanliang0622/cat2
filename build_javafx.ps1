@@ -18,5 +18,5 @@ if (-not $javafxJars) {
 $modulePath = ($javafxJars -join ";")
 $javaFiles = Get-ChildItem -Path $srcDir -Recurse -Filter *.java | ForEach-Object { $_.FullName }
 
-javac -encoding UTF-8 --module-path $modulePath --add-modules javafx.controls -d $outDir $javaFiles
+javac -encoding UTF-8 --module-path $modulePath --add-modules javafx.controls,javafx.media -d $outDir $javaFiles
 Write-Host "Build complete: $outDir"
