@@ -1,6 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
-chcp 65001 >nul 2>&1
+chcp 65001 >/dev/null 2>&1
 title 抓小貓 - 多人連線版
 
 echo ================================================
@@ -9,7 +9,7 @@ echo ================================================
 echo.
 
 :: ── 確認 Java 已安裝 ──────────────────────────────
-java -version >nul 2>&1
+java -version >/dev/null 2>&1
 if errorlevel 1 (
     echo [錯誤] 找不到 Java，請先安裝 JDK 17：
     echo   https://adoptium.net/
@@ -23,9 +23,11 @@ set OUT=%PROJECT%out
 set LIB=%PROJECT%lib
 set SRC=%PROJECT%src
 
-:: ── 收集 JAR（delayed expansion 版）──────────────
+:: ── 只收集 Windows 平台的 JAR（排除 mac / mac-aarch64）
 set JARS=
 for %%f in ("%LIB%\*.jar") do (
+    set "fname=%%~nf"
+    echo !fname! | findstr /i "\-mac" >/dev/null && continue
     if "!JARS!"=="" (
         set JARS=%%f
     ) else (
@@ -44,7 +46,7 @@ if "!JARS!"=="" (
 if exist "%OUT%" rmdir /s /q "%OUT%"
 mkdir "%OUT%"
 
-:: ── 用 sources.txt 傳遞 .java 清單（避免命令列過長）
+:: ── 用 sources.txt 傳遞 .java 清單 ────────────────
 set SOURCES=%PROJECT%sources.txt
 if exist "%SOURCES%" del "%SOURCES%"
 for /r "%SRC%" %%f in (*.java) do echo %%f >> "%SOURCES%"
@@ -56,11 +58,11 @@ javac -encoding UTF-8 --module-path "!JARS!" --add-modules javafx.controls,javaf
 if errorlevel 1 (
     echo.
     echo [錯誤] 編譯失敗，請確認 JDK 版本為 17 以上。
-    del "%SOURCES%" >nul 2>&1
+    del "%SOURCES%" >/dev/null 2>&1
     pause
     exit /b 1
 )
-del "%SOURCES%" >nul 2>&1
+del "%SOURCES%" >/dev/null 2>&1
 
 :: ── 啟動遊戲 ──────────────────────────────────────
 echo 啟動遊戲...
