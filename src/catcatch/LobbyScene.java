@@ -77,11 +77,25 @@ public class LobbyScene {
 
         Label ipHead = smallLabel("主機 IP（分享給其他玩家）", t);
         ipHead.setWrapText(true);
-        Label ipLabel = new Label(isHost ? CatCatchApp.getLocalIP() : "（加入者不需提供 IP）");
+
+        // 取得本機 IP 與 ZeroTier IP
+        String localIp    = CatCatchApp.getLocalIP();
+        String zeroTierIp = CatCatchApp.getZeroTierIP();
+
+        Label ipLabel = new Label(isHost ? localIp : "（加入者不需提供 IP）");
         ipLabel.setStyle("-fx-font-size:14px;-fx-font-weight:bold;-fx-text-fill:" + t.accentDark + ";");
         ipLabel.setWrapText(true);
         Label portLabel = new Label("連接埠：" + CatCatchApp.SERVER_PORT);
         portLabel.setStyle(t.labelStyle(11, false));
+
+        // 若偵測到 ZeroTier，額外顯示 ZeroTier IP
+        Label ztHead  = smallLabel("ZeroTier IP（跨網路時使用）", t);
+        Label ztLabel = new Label(zeroTierIp != null ? zeroTierIp : "未偵測到 ZeroTier");
+        ztLabel.setStyle("-fx-font-size:13px;-fx-font-weight:bold;-fx-text-fill:" +
+                (zeroTierIp != null ? "#6080C0" : t.muted) + ";");
+        ztLabel.setWrapText(true);
+        ztHead.setVisible(isHost);  ztHead.setManaged(isHost);
+        ztLabel.setVisible(isHost); ztLabel.setManaged(isHost);
 
         Button readyBtn = MainMenuScene.primaryBtn("準備完成", 200, t);
         final boolean[] ready = {false};
@@ -101,7 +115,7 @@ public class LobbyScene {
         startBtn.setVisible(isHost); startBtn.setManaged(isHost);
 
         infoCard.getChildren().addAll(infoTitle, sep(t), codeHead, codeLabel, copyBtn);
-        if (isHost) infoCard.getChildren().addAll(ipHead, ipLabel, portLabel);
+        if (isHost) infoCard.getChildren().addAll(ipHead, ipLabel, portLabel, ztHead, ztLabel);
         infoCard.getChildren().addAll(sep(t), readyBtn, startBtn);
 
         // ── Right card: player list ───────────────────────────────────────────

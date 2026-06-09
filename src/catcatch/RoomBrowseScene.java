@@ -304,9 +304,16 @@ public class RoomBrowseScene {
         icon.setStyle("-fx-font-size:48px;");
         Label msg  = new Label("目前沒有找到任何房間");
         msg.setStyle("-fx-font-size:16px;-fx-font-weight:bold;-fx-text-fill:" + t.text + ";");
-        Label hint = new Label("請確認你與房主在相同 Wi-Fi 或 ZeroTier 網路中，\n然後點擊「重新搜尋」。");
-        hint.setStyle("-fx-font-size:12px;-fx-text-fill:" + t.muted + ";-fx-text-alignment:center;");
-        hint.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
+        Label hint = new Label(
+            "請確認以下事項後點擊「重新搜尋」：\n\n" +
+            "• 房主已點「建立房間」並進入大廳\n" +
+            "• 同一 Wi-Fi：確認連到相同路由器\n" +
+            "• ZeroTier：雙方都已加入同一個 ZeroTier Network，\n" +
+            "  且 ZeroTier 顯示為 OK（綠燈）\n\n" +
+            "若仍搜尋不到，請點右下角「手動輸入 IP」，\n" +
+            "輸入房主的 ZeroTier IP（10.x.x.x 格式）。");
+        hint.setStyle("-fx-font-size:12px;-fx-text-fill:" + t.muted + ";-fx-text-alignment:left;");
+        hint.setTextAlignment(javafx.scene.text.TextAlignment.LEFT);
         VBox box = new VBox(12, icon, msg, hint);
         box.setAlignment(Pos.CENTER);
         box.setPadding(new Insets(48));

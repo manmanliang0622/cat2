@@ -161,6 +161,10 @@ public class CatCatchApp extends Application {
             while (ifaces.hasMoreElements()) {
                 NetworkInterface ni = ifaces.nextElement();
                 if (ni.isLoopback() || !ni.isUp()) continue;
+                // 跳過 ZeroTier 介面，留給 getZeroTierIP()
+                String name = ni.getName() == null ? "" : ni.getName().toLowerCase();
+                String disp = ni.getDisplayName() == null ? "" : ni.getDisplayName().toLowerCase();
+                if (name.startsWith("zt") || disp.contains("zerotier")) continue;
                 Enumeration<java.net.InetAddress> addrs = ni.getInetAddresses();
                 while (addrs.hasMoreElements()) {
                     java.net.InetAddress a = addrs.nextElement();
@@ -169,6 +173,26 @@ public class CatCatchApp extends Application {
             }
         } catch (Exception ignored) {}
         return "127.0.0.1";
+    }
+
+    /** 傳回 ZeroTier 虛擬網路的 IP，若未安裝 / 未啟動則回傳 null。 */
+    static String getZeroTierIP() {
+        try {
+            Enumeration<NetworkInterface> ifaces = NetworkInterface.getNetworkInterfaces();
+            while (ifaces.hasMoreElements()) {
+                NetworkInterface ni = ifaces.nextElement();
+                if (!ni.isUp() || ni.isLoopback()) continue;
+                String name = ni.getName() == null ? "" : ni.getName().toLowerCase();
+                String disp = ni.getDisplayName() == null ? "" : ni.getDisplayName().toLowerCase();
+                if (!name.startsWith("zt") && !disp.contains("zerotier")) continue;
+                Enumeration<java.net.InetAddress> addrs = ni.getInetAddresses();
+                while (addrs.hasMoreElements()) {
+                    java.net.InetAddress a = addrs.nextElement();
+                    if (a instanceof Inet4Address && !a.isLoopbackAddress()) return a.getHostAddress();
+                }
+            }
+        } catch (Exception ignored) {}
+        return null;
     }
 
     public static void main(String[] args) { launch(args); }
