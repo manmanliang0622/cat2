@@ -8,7 +8,6 @@ echo    抓小貓  多人連線版
 echo ================================================
 echo.
 
-:: ── 確認 Java 已安裝 ──────────────────────────────
 java -version >/dev/null 2>&1
 if errorlevel 1 (
     echo [錯誤] 找不到 Java，請先安裝 JDK 17：
@@ -17,60 +16,54 @@ if errorlevel 1 (
     exit /b 1
 )
 
-:: ── 路徑設定 ──────────────────────────────────────
 set PROJECT=%~dp0
 set OUT=%PROJECT%out
 set LIB=%PROJECT%lib
 set SRC=%PROJECT%src
 
-:: ── 只收集 Windows 平台的 JAR（排除 mac / mac-aarch64）
+:: ── 只收 Windows JAR（排除 -mac 結尾的 JAR）──────
 set JARS=
 for %%f in ("%LIB%\*.jar") do (
-    set "fname=%%~nf"
-    echo !fname! | findstr /i "\-mac" >/dev/null && continue
-    if "!JARS!"=="" (
-        set JARS=%%f
-    ) else (
-        set JARS=!JARS!;%%f
+    set "nm=%%~nf"
+    set "SKIP="
+    if "!nm:~-4!"=="-mac" set SKIP=1
+    if "!nm:~-12!"=="-mac-aarch64" set SKIP=1
+    if not defined SKIP (
+        if "!JARS!"=="" (
+            set JARS=%%f
+        ) else (
+            set JARS=!JARS!;%%f
+        )
     )
 )
 
 if "!JARS!"=="" (
-    echo [錯誤] 找不到 lib\ 裡的 JavaFX JAR！
-    echo 請從 GitHub 重新下載完整專案。
+    echo [錯誤] 找不到 JavaFX JAR！
     pause
     exit /b 1
 )
 
-:: ── 建立 out 目錄 ──────────────────────────────────
 if exist "%OUT%" rmdir /s /q "%OUT%"
 mkdir "%OUT%"
 
-:: ── 用 sources.txt 傳遞 .java 清單 ────────────────
 set SOURCES=%PROJECT%sources.txt
 if exist "%SOURCES%" del "%SOURCES%"
 for /r "%SRC%" %%f in (*.java) do echo %%f >> "%SOURCES%"
 
-:: ── 編譯 ──────────────────────────────────────────
 echo 編譯中...
 javac -encoding UTF-8 --module-path "!JARS!" --add-modules javafx.controls,javafx.media -d "%OUT%" @"%SOURCES%"
+del "%SOURCES%" >/dev/null 2>&1
 
 if errorlevel 1 (
-    echo.
     echo [錯誤] 編譯失敗，請確認 JDK 版本為 17 以上。
-    del "%SOURCES%" >/dev/null 2>&1
     pause
     exit /b 1
 )
-del "%SOURCES%" >/dev/null 2>&1
 
-:: ── 啟動遊戲 ──────────────────────────────────────
 echo 啟動遊戲...
-echo.
 java --module-path "!JARS!" --add-modules javafx.controls,javafx.media -cp "%OUT%" catcatch.CatCatchApp
 
 if errorlevel 1 (
-    echo.
     echo [錯誤] 遊戲啟動失敗。
     pause
 )
