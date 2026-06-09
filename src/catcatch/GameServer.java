@@ -492,10 +492,8 @@ public class GameServer {
     // ── Utilities ─────────────────────────────────────────────────────────────
 
     private String randomCode() {
-        String alpha = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < 4; i++) sb.append(alpha.charAt(RANDOM.nextInt(alpha.length())));
-        return sb.toString();
+        // 產生 4 位純數字房號（1000–9999，避免 0 開頭）
+        return String.valueOf(1000 + RANDOM.nextInt(9000));
     }
 
     private String randomVariant(String exclude) {

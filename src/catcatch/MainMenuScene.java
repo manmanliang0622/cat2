@@ -374,12 +374,13 @@ public class MainMenuScene {
         Label codeLbl = new Label("房間號碼");
         codeLbl.setStyle(t.labelStyle(12, true));
         TextField codeField = new TextField();
-        codeField.setPromptText("4 位房號");
+        codeField.setPromptText("4 位數字房號");
         codeField.setStyle(t.inputStyle());
         codeField.setMaxWidth(280);
         codeField.setTextFormatter(new TextFormatter<>(c -> {
-            String s = c.getControlNewText().toUpperCase();
-            if (s.length() <= 4) { c.setText(c.getText().toUpperCase()); return c; }
+            String s = c.getControlNewText();
+            // 只允許數字，最多 4 位
+            if (s.matches("\\d{0,4}")) return c;
             return null;
         }));
 
@@ -387,10 +388,10 @@ public class MainMenuScene {
         connectBtn.setOnAction(e -> {
             String name = nameField.getText().trim();
             String ip   = ipField.getText().trim();
-            String code = codeField.getText().trim().toUpperCase();
-            if (name.isEmpty())     { errorLabel.setText("請先輸入名字！");      return; }
-            if (ip.isEmpty())       { errorLabel.setText("請輸入主機 IP！");     return; }
-            if (code.length() != 4) { errorLabel.setText("請輸入 4 位房號！");  return; }
+            String code = codeField.getText().trim();
+            if (name.isEmpty())     { errorLabel.setText("請先輸入名字！");          return; }
+            if (ip.isEmpty())       { errorLabel.setText("請輸入主機 IP！");         return; }
+            if (code.length() != 4) { errorLabel.setText("請輸入 4 位數字房號！");  return; }
             errorLabel.setText(" ");
             connectBtn.setDisable(true);
             connectBtn.setText("連線中...");

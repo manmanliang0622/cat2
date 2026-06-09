@@ -334,10 +334,10 @@ public class RoomBrowseScene {
         dlg.setHeaderText("輸入房主的 IP 位址與房號");
 
         TextField ipField   = new TextField(); ipField.setPromptText("192.168.x.x");
-        TextField codeField = new TextField(); codeField.setPromptText("4 位房號（如 AB3C）");
+        TextField codeField = new TextField(); codeField.setPromptText("4 位數字房號");
         codeField.setTextFormatter(new TextFormatter<>(c -> {
-            String s = c.getControlNewText().toUpperCase();
-            return s.length() <= 4 ? c : null;
+            String s = c.getControlNewText();
+            return s.matches("\\d{0,4}") ? c : null;
         }));
 
         VBox content = new VBox(10,
@@ -350,7 +350,7 @@ public class RoomBrowseScene {
         dlg.showAndWait().ifPresent(btn -> {
             if (btn != ButtonType.OK) return;
             String ip   = ipField.getText().trim();
-            String code = codeField.getText().trim().toUpperCase();
+            String code = codeField.getText().trim();
             if (ip.isEmpty() || code.length() != 4) return;
             RoomInfo fake = new RoomInfo(code, "手動", ip, CatCatchApp.SERVER_PORT, 0, false);
             joinRoom(app, playerName, fake, null, null);
