@@ -18,27 +18,79 @@ public class KawaiiDeco {
 
     // ── Background decoration ─────────────────────────────────────────────────
 
-    /** Paint soft clouds, stars and paw prints onto a background Pane. */
+    /** Paint soft kawaii decorations onto a background Pane. */
     public static void addBackground(Pane pane, Theme t, double w, double h) {
-        // Clouds (pill shapes)
-        addCloud(pane, 80,  60,  90, t.sky);
-        addCloud(pane, w - 130, 80, 70, t.mint);
-        addCloud(pane, w / 2 - 60, h - 80, 80, t.lavender);
-        addCloud(pane, 40,  h - 120, 60, t.sky);
+        // ── 大雲朵（更多、更輕）────────────────────────────────────────────────
+        addCloud(pane, 70,   50,  100, t.sky);
+        addCloud(pane, w - 160, 70,  80, t.mint);
+        addCloud(pane, w / 2 - 80, h - 90,  90, t.lavender);
+        addCloud(pane, 30,   h - 130, 70, t.sky);
+        addCloud(pane, w * 0.60, h * 0.05,  60, t.gold);
 
-        // Soft stars
+        // ── 旋轉星星 ──────────────────────────────────────────────────────────
         double[][] stars = {
-            {w * 0.15, h * 0.25, 10},
-            {w * 0.80, h * 0.18, 12},
-            {w * 0.65, h * 0.72, 9},
-            {w * 0.30, h * 0.80, 8},
-            {w * 0.90, h * 0.55, 10},
+            {w * 0.12, h * 0.22, 11},
+            {w * 0.82, h * 0.15, 13},
+            {w * 0.68, h * 0.75, 9},
+            {w * 0.28, h * 0.82, 8},
+            {w * 0.92, h * 0.52, 11},
+            {w * 0.45, h * 0.12, 7},
         };
         for (double[] s : stars) addStar(pane, s[0], s[1], s[2], t.gold);
 
-        // Paw prints (two small circles + three tiny toe beans)
-        double[][] paws = {{w * 0.08, h * 0.55}, {w * 0.88, h * 0.40}, {w * 0.50, h * 0.92}};
-        for (double[] p : paws) addPaw(pane, p[0], p[1], t.accent, 0.22);
+        // ── 貓掌印 ────────────────────────────────────────────────────────────
+        double[][] paws = {
+            {w * 0.06, h * 0.52},
+            {w * 0.90, h * 0.38},
+            {w * 0.52, h * 0.94},
+        };
+        for (double[] p : paws) addPaw(pane, p[0], p[1], t.accent, 0.20);
+
+        // ── 愛心 ──────────────────────────────────────────────────────────────
+        addHeart(pane, w * 0.04, h * 0.30, 14, t.accent, 0.28);
+        addHeart(pane, w * 0.94, h * 0.68, 12, t.lavender, 0.30);
+        addHeart(pane, w * 0.50, h * 0.96, 10, t.mint, 0.25);
+
+        // ── 圓點群（泡泡感）──────────────────────────────────────────────────
+        addDotCluster(pane, w * 0.78, h * 0.88, t.sky,    0.28);
+        addDotCluster(pane, w * 0.18, h * 0.06, t.mint,   0.24);
+        addDotCluster(pane, w * 0.96, h * 0.22, t.lavender, 0.22);
+    }
+
+    /** 愛心（Bézier 近似） */
+    private static void addHeart(Pane pane, double x, double y, double r,
+                                  String color, double opacity) {
+        javafx.scene.shape.SVGPath heart = new javafx.scene.shape.SVGPath();
+        // 簡化的愛心 SVG path，以 (0,0) 為中心，大小約 ±r
+        double s = r * 0.9;
+        heart.setContent(String.format(java.util.Locale.US,
+            "M 0,%.1f C %.1f,%.1f %.1f,%.1f 0,0 C %.1f,%.1f %.1f,%.1f 0,%.1f Z",
+            s * 0.4,
+            -s * 1.1, -s * 0.9, -s * 1.1, -s * 0.1,
+             s * 1.1, -s * 0.9,  s * 1.1, -s * 0.1,
+            s * 0.4));
+        heart.setFill(Color.web(color, opacity));
+        heart.setTranslateX(x);
+        heart.setTranslateY(y);
+        // 緩慢浮動
+        TranslateTransition fl = new TranslateTransition(Duration.seconds(3.5 + Math.random()), heart);
+        fl.setByY(-6 - Math.random() * 4);
+        fl.setAutoReverse(true); fl.setCycleCount(Animation.INDEFINITE);
+        fl.setInterpolator(Interpolator.EASE_BOTH); fl.play();
+        pane.getChildren().add(heart);
+    }
+
+    /** 三顆小圓點（泡泡點綴） */
+    private static void addDotCluster(Pane pane, double x, double y,
+                                       String color, double opacity) {
+        double[][] dots = {{0,0,7},{18,8,5},{9,-12,6}};
+        for (double[] d : dots) {
+            Circle c = new Circle(d[2]);
+            c.setFill(Color.web(color, opacity));
+            c.setTranslateX(x + d[0]);
+            c.setTranslateY(y + d[1]);
+            pane.getChildren().add(c);
+        }
     }
 
     private static void addCloud(Pane p, double x, double y, double r, String color) {

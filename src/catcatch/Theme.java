@@ -71,66 +71,64 @@ public enum Theme {
                "-fx-font-family:'jf-openhuninn','Microsoft JhengHei','Rounded Mplus 1c','Segoe UI',sans-serif;";
     }
 
-    /** White card with coloured thick sticker-border + soft shadow */
+    /** 浮動卡片：無硬框線，純陰影製造層次感 */
     public String cardStyle() {
-        return "-fx-background-color:" + panelBg + ";-fx-background-radius:24;" +
-               "-fx-border-color:" + accentDark + ";-fx-border-radius:24;-fx-border-width:2.5;" +
-               "-fx-effect:dropshadow(gaussian," + shadow() + ",14,0,3,5);";
+        return "-fx-background-color:" + panelBg + ";-fx-background-radius:30;" +
+               "-fx-effect:dropshadow(gaussian," + shadow() + ",26,0.04,0,8);";
     }
 
-    /** Softer card variant (used for sub-panels) */
+    /** 子面板柔和卡片 */
     public String softCard() {
-        return "-fx-background-color:" + panelBg + ";-fx-background-radius:18;" +
-               "-fx-border-color:" + muted + ";-fx-border-radius:18;-fx-border-width:2;" +
-               "-fx-effect:dropshadow(gaussian," + shadow() + ",8,0,2,3);";
+        return "-fx-background-color:" + panelBg + ";-fx-background-radius:22;" +
+               "-fx-effect:dropshadow(gaussian," + shadow() + ",14,0.02,0,4);";
     }
 
-    /** Candy / bubble button – filled accent */
+    /** 泡泡糖按鈕：無硬框線，靠陰影和色塊呈現立體感 */
     public String primaryBtn() {
         return "-fx-background-color:" + accent + ";-fx-text-fill:" + textOnAccent + ";" +
-               "-fx-font-size:14px;-fx-font-weight:bold;-fx-background-radius:32;-fx-cursor:hand;" +
-               "-fx-padding:12 34 12 34;" +
-               "-fx-border-color:" + accentDark + ";-fx-border-radius:32;-fx-border-width:2.5;" +
-               "-fx-effect:dropshadow(gaussian," + shadow() + ",8,0,2,4);";
+               "-fx-font-size:14px;-fx-font-weight:bold;-fx-background-radius:40;-fx-cursor:hand;" +
+               "-fx-padding:13 38 13 38;" +
+               "-fx-effect:dropshadow(gaussian," + btnShadow() + ",14,0.10,0,5);";
     }
 
     public String primaryBtnHover() {
         return "-fx-background-color:" + buttonHover + ";-fx-text-fill:" + textOnAccent + ";" +
-               "-fx-font-size:14px;-fx-font-weight:bold;-fx-background-radius:32;-fx-cursor:hand;" +
-               "-fx-padding:12 34 12 34;" +
-               "-fx-border-color:" + accentDark + ";-fx-border-radius:32;-fx-border-width:2.5;" +
-               "-fx-effect:dropshadow(gaussian," + shadow() + ",12,0,2,6);";
+               "-fx-font-size:14px;-fx-font-weight:bold;-fx-background-radius:40;-fx-cursor:hand;" +
+               "-fx-padding:13 38 13 38;" +
+               "-fx-effect:dropshadow(gaussian," + btnShadow() + ",20,0.15,0,9);";
     }
 
     public String primaryBtnPressed() {
         return "-fx-background-color:" + accentDark + ";-fx-text-fill:" + textOnAccent + ";" +
-               "-fx-font-size:14px;-fx-font-weight:bold;-fx-background-radius:32;-fx-cursor:hand;" +
-               "-fx-padding:13 34 11 34;" +         // shift down = press feel
-               "-fx-border-color:" + accentDark + ";-fx-border-radius:32;-fx-border-width:2.5;";
+               "-fx-font-size:14px;-fx-font-weight:bold;-fx-background-radius:40;-fx-cursor:hand;" +
+               "-fx-padding:15 38 11 38;" +
+               "-fx-effect:dropshadow(gaussian," + btnShadow() + ",5,0,0,1);";
     }
 
-    /** Ghost button – white fill, coloured border */
+    /** 幽靈按鈕：淡色背景 + 細柔邊線 */
     public String secondaryBtn() {
-        return "-fx-background-color:" + panelBg + ";-fx-text-fill:" + text + ";" +
-               "-fx-font-size:13px;-fx-background-radius:28;-fx-cursor:hand;" +
-               "-fx-border-color:" + muted + ";-fx-border-radius:28;-fx-border-width:2;" +
-               "-fx-padding:10 28 10 28;";
+        return "-fx-background-color:" + bg + ";-fx-text-fill:" + text + ";" +
+               "-fx-font-size:13px;-fx-background-radius:34;-fx-cursor:hand;" +
+               "-fx-border-color:" + accent + "88;-fx-border-radius:34;-fx-border-width:1.5;" +
+               "-fx-padding:11 30 11 30;" +
+               "-fx-effect:dropshadow(gaussian," + shadow() + ",8,0,0,2);";
     }
 
     public String secondaryBtnHover() {
-        return "-fx-background-color:" + bg + ";-fx-text-fill:" + accentDark + ";" +
-               "-fx-font-size:13px;-fx-background-radius:28;-fx-cursor:hand;" +
-               "-fx-border-color:" + accentDark + ";-fx-border-radius:28;-fx-border-width:2.5;" +
-               "-fx-padding:10 28 10 28;" +
-               "-fx-effect:dropshadow(gaussian," + shadow() + ",6,0,1,3);";
+        return "-fx-background-color:" + accent + "30;-fx-text-fill:" + accentDark + ";" +
+               "-fx-font-size:13px;-fx-background-radius:34;-fx-cursor:hand;" +
+               "-fx-border-color:" + accentDark + "AA;-fx-border-radius:34;-fx-border-width:1.5;" +
+               "-fx-padding:11 30 11 30;" +
+               "-fx-effect:dropshadow(gaussian," + shadow() + ",14,0.06,0,5);";
     }
 
     public String inputStyle() {
         boolean dark = this == DARK;
         return "-fx-background-color:" + (dark ? "#2C2840" : "#FFFFFF") + ";" +
-               "-fx-border-color:" + muted + ";-fx-border-radius:16;-fx-background-radius:16;" +
-               "-fx-border-width:2;-fx-padding:10 16;-fx-font-size:14px;" +
-               "-fx-text-fill:" + text + ";";
+               "-fx-border-color:" + accent + "88;-fx-border-radius:18;-fx-background-radius:18;" +
+               "-fx-border-width:1.5;-fx-padding:10 16;-fx-font-size:14px;" +
+               "-fx-text-fill:" + text + ";" +
+               "-fx-effect:dropshadow(gaussian," + shadow() + ",6,0,0,2);";
     }
 
     public String labelStyle(int size, boolean bold) {
@@ -139,6 +137,10 @@ public enum Theme {
     }
 
     private String shadow() {
-        return this == DARK ? "rgba(0,0,0,0.40)" : "rgba(160,110,110,0.13)";
+        return this == DARK ? "rgba(0,0,0,0.38)" : "rgba(180,130,150,0.14)";
+    }
+
+    private String btnShadow() {
+        return this == DARK ? "rgba(0,0,0,0.50)" : "rgba(200,130,155,0.40)";
     }
 }

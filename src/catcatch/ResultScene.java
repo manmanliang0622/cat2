@@ -40,9 +40,9 @@ public class ResultScene {
         StackPane trophyPane = new StackPane();
         trophyPane.setPrefSize(84, 84);
         Circle trBg = new Circle(40);
-        trBg.setFill(Color.web(t.gold, 0.30));
-        trBg.setStroke(Color.web(t.accentDark));
-        trBg.setStrokeWidth(2.5);
+        trBg.setFill(Color.web(t.gold, 0.28));
+        trBg.setEffect(new javafx.scene.effect.DropShadow(16,
+                Color.web(t.gold, 0.35)));
         ImageView trophyIv = Icons.get("trophy", 54);
         trophyPane.getChildren().addAll(trBg, trophyIv);
 
@@ -75,8 +75,10 @@ public class ResultScene {
         rankList.setAlignment(Pos.CENTER);
         rankList.setMaxWidth(560);
 
-        String[] rowBg    = {t.gold + "50", t.lavender + "50", t.sky + "50"};
-        String[] rowBdr   = {"#C89600", "#9080B0", "#4A9BD4"};
+        // 前三名背景色（無硬框線，純陰影）
+        String[] rowBg  = {t.gold + "45", t.lavender + "42", t.sky + "42"};
+        String[] rowShadow = {
+            "rgba(200,165,0,0.20)", "rgba(150,130,190,0.18)", "rgba(80,160,210,0.18)"};
 
         for (int i = 0; i < finalState.players().size(); i++) {
             GameClient.RemotePlayer p = finalState.players().get(i);
@@ -84,14 +86,14 @@ public class ResultScene {
 
             HBox row = new HBox(14);
             row.setAlignment(Pos.CENTER_LEFT);
-            row.setPadding(new Insets(12, 20, 12, 20));
+            row.setPadding(new Insets(14, 22, 14, 22));
             String rowStyle = (i < 3)
-                ? "-fx-background-color:" + rowBg[i] + ";-fx-background-radius:18;" +
-                  "-fx-border-color:" + rowBdr[i] + ";-fx-border-radius:18;-fx-border-width:2.5;" +
-                  "-fx-effect:dropshadow(gaussian,rgba(180,140,160,0.12),8,0,2,3);"
-                : "-fx-background-color:" + t.panelBg + ";-fx-background-radius:14;";
+                ? "-fx-background-color:" + rowBg[i] + ";-fx-background-radius:22;" +
+                  "-fx-effect:dropshadow(gaussian," + rowShadow[i] + ",14,0.06,0,5);"
+                : "-fx-background-color:" + t.panelBg + ";-fx-background-radius:16;" +
+                  "-fx-effect:dropshadow(gaussian,rgba(180,130,150,0.10),8,0,0,3);";
             if (isSelf)
-                rowStyle += "-fx-border-color:" + t.accentDark + ";-fx-border-radius:18;-fx-border-width:3;";
+                rowStyle += "-fx-border-color:" + t.accent + "CC;-fx-border-radius:22;-fx-border-width:2;";
             row.setStyle(rowStyle);
 
             // Rank badge

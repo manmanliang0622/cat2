@@ -205,22 +205,21 @@ public class LobbyScene {
                     row.setAlignment(Pos.CENTER_LEFT);
                     row.setPadding(new Insets(9, 14, 9, 14));
                     row.setStyle(
-                        "-fx-background-color:" + (isSelf ? t.accent + "28" : t.bg) + ";" +
-                        "-fx-background-radius:14;" +
-                        (isSelf ? "-fx-border-color:" + t.accentDark + ";-fx-border-radius:14;-fx-border-width:2;" : ""));
+                        "-fx-background-color:" + (isSelf ? t.accent + "30" : t.bg + "C0") + ";" +
+                        "-fx-background-radius:16;" +
+                        (isSelf ? "-fx-effect:dropshadow(gaussian,rgba(200,130,155,0.18),10,0,0,3);" : ""));
 
                     Label nameLbl = new Label(p.name() + (isSelf ? " (你)" : "") + (isH ? " 房主" : ""));
                     nameLbl.setStyle("-fx-font-size:14px;-fx-text-fill:" + t.text + ";" +
                                      (isSelf ? "-fx-font-weight:bold;" : ""));
                     Region sp2 = new Region(); HBox.setHgrow(sp2, Priority.ALWAYS);
 
-                    Label badge = new Label(p.ready() ? "已準備" : "等待中");
-                    badge.setStyle("-fx-font-size:11px;-fx-font-weight:bold;-fx-background-radius:12;-fx-padding:3 12;" +
+                    Label badge = new Label(p.ready() ? "✿ 已準備" : "等待中");
+                    badge.setStyle("-fx-font-size:11px;-fx-font-weight:bold;-fx-background-radius:20;-fx-padding:4 14;" +
                         (p.ready()
                          ? "-fx-background-color:" + t.mint + ";-fx-text-fill:#1E6040;" +
-                           "-fx-border-color:#2A8060;-fx-border-radius:12;-fx-border-width:1.5;"
-                         : "-fx-background-color:" + t.panelBg + ";-fx-text-fill:" + t.muted + ";" +
-                           "-fx-border-color:" + t.muted + ";-fx-border-radius:12;-fx-border-width:1.5;"));
+                           "-fx-effect:dropshadow(gaussian,rgba(80,180,130,0.22),8,0,0,2);"
+                         : "-fx-background-color:" + t.bg + ";-fx-text-fill:" + t.muted + ";"));
 
                     row.getChildren().addAll(nameLbl, sp2, badge);
                     playerRows.getChildren().add(row);

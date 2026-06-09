@@ -42,8 +42,7 @@ public class GameScene {
         topBar.setPadding(new Insets(0, 18, 0, 18));
         topBar.setStyle(
             "-fx-background-color:" + t.panelBg + ";" +
-            "-fx-border-color:" + t.accentDark + ";-fx-border-width:0 0 2.5 0;" +
-            "-fx-effect:dropshadow(gaussian,rgba(180,120,140,0.15),10,0,0,4);");
+            "-fx-effect:dropshadow(gaussian,rgba(180,120,140,0.14),14,0.02,0,5);");
 
         // --- Target section ---
         StackPane targetImgPane = new StackPane();
@@ -54,9 +53,8 @@ public class GameScene {
         targetIV.setPreserveRatio(true);
 
         Circle targetRing = new Circle(36);
-        targetRing.setFill(Color.TRANSPARENT);
-        targetRing.setStroke(Color.web("#C0B8AC"));
-        targetRing.setStrokeWidth(3);
+        targetRing.setFill(Color.web(t.accent, 0.12));
+        targetRing.setStroke(Color.TRANSPARENT);
         targetImgPane.getChildren().addAll(targetRing, targetIV);
 
         Label targetHint = new Label("現在要抓這隻！");
@@ -73,8 +71,8 @@ public class GameScene {
         targetSection.setPadding(new Insets(8, 18, 8, 18));
         targetSection.setStyle(
             "-fx-background-color:" + VARIANT_BG.get("GRAY") + ";" +
-            "-fx-background-radius:18;-fx-border-color:" + VARIANT_BORDER.get("GRAY") + ";" +
-            "-fx-border-radius:18;-fx-border-width:2.5;");
+            "-fx-background-radius:22;" +
+            "-fx-effect:dropshadow(gaussian,rgba(160,120,130,0.15),10,0,0,3);");
 
         // --- Timer (candy card) ---
         HBox timerInner = new HBox(6, Icons.get("hourglass", 22));
@@ -90,8 +88,9 @@ public class GameScene {
         timerBox.setPrefWidth(110);
         timerBox.setStyle(
             "-fx-background-color:" + t.sky + ";" +
-            "-fx-background-radius:18;-fx-border-color:#6BBDE0;-fx-border-radius:18;-fx-border-width:2.5;" +
-            "-fx-padding:6 12;-fx-effect:dropshadow(gaussian,rgba(100,180,220,0.25),6,0,1,3);");
+            "-fx-background-radius:22;" +
+            "-fx-padding:6 14;" +
+            "-fx-effect:dropshadow(gaussian,rgba(100,180,220,0.28),12,0.06,0,4);");
 
         // --- Score (candy card) ---
         Label scoreHead = new Label("スコア");
@@ -107,8 +106,9 @@ public class GameScene {
         scoreBox.setPadding(new Insets(0, 16, 0, 0));
         scoreBox.setStyle(
             "-fx-background-color:" + t.gold + ";" +
-            "-fx-background-radius:18;-fx-border-color:#C89800;-fx-border-radius:18;-fx-border-width:2.5;" +
-            "-fx-padding:6 12;-fx-effect:dropshadow(gaussian,rgba(200,160,0,0.20),6,0,1,3);");
+            "-fx-background-radius:22;" +
+            "-fx-padding:6 14;" +
+            "-fx-effect:dropshadow(gaussian,rgba(200,160,0,0.28),12,0.06,0,4);");
 
         Region sp1 = new Region(); HBox.setHgrow(sp1, Priority.ALWAYS);
         Region sp2 = new Region(); HBox.setHgrow(sp2, Priority.ALWAYS);
@@ -179,15 +179,15 @@ public class GameScene {
                 if (!tv.equals(prevTarget[0])) {
                     prevTarget[0] = tv;
                     targetIV.setImage(imgCache.get(tv.toLowerCase()));
-                    targetRing.setStroke(Color.web(VARIANT_BORDER.getOrDefault(tv, "#C0B8AC")));
-                    targetIV.setEffect(new DropShadow(16, Color.web(VARIANT_COLOR.getOrDefault(tv, "#9E9E9E"))));
+                    targetRing.setFill(Color.web(VARIANT_BG.getOrDefault(tv, "#F5F4F0"), 0.55));
+                    targetIV.setEffect(new DropShadow(18, Color.web(VARIANT_COLOR.getOrDefault(tv, "#9E9E9E"))));
                     targetName.setText(VARIANT_LABEL.getOrDefault(tv, tv));
                     targetName.setStyle("-fx-font-size:18px;-fx-font-weight:bold;" +
                         "-fx-text-fill:" + VARIANT_COLOR.getOrDefault(tv, "#9E9E9E") + ";");
                     targetSection.setStyle(
                         "-fx-background-color:" + VARIANT_BG.getOrDefault(tv, "#F5F4F0") + ";" +
-                        "-fx-background-radius:18;-fx-border-color:" + VARIANT_BORDER.getOrDefault(tv, "#C0B8AC") + ";" +
-                        "-fx-border-radius:18;-fx-border-width:2.5;");
+                        "-fx-background-radius:22;" +
+                        "-fx-effect:dropshadow(gaussian,rgba(160,120,130,0.15),10,0,0,3);");
                     ScaleTransition fl = new ScaleTransition(Duration.millis(160), targetSection);
                     fl.setFromX(1.0); fl.setFromY(1.0); fl.setToX(1.05); fl.setToY(1.05);
                     fl.setAutoReverse(true); fl.setCycleCount(2); fl.play();
