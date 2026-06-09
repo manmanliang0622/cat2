@@ -8,9 +8,10 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class GameServer {
-    private static final int DEFAULT_PORT = 5050;
-    private static final int GAME_SECONDS = 45;
-    private static final int RETURN_SECONDS = 10;
+    private static final int  DEFAULT_PORT   = 5050;
+    private static final int  GAME_SECONDS   = 45;
+    private static final int  RETURN_SECONDS = 10;
+    private static final long TARGET_GRACE_MS = 1500L; // 目標切換後的寬限期（毫秒）
     private static final Random RANDOM = new Random();
 
     private final Map<String, Room> rooms = new ConcurrentHashMap<>();
@@ -210,16 +211,24 @@ public class GameServer {
         if (room.status != RoomStatus.PLAYING)
             return Protocol.encode("ERROR", "message", "遊戲尚未開始。");
         Entity entity = room.entities.remove(entityId);
-        if (entity == null) return Protocol.encode("OK", "message", "");
+        if (entity == null) return Protocol.encode("OK", "message", ""); // 已被其他玩家點走
+
         if (entity.kind == EntityKind.DOG) {
             player.score -= 15;
             room.message = player.name + " 點到地雷 (狗)，扣 15 分！";
-        } else if (entity.variant.equals(room.targetVariant)) {
-            player.score += 10;
-            room.message = player.name + " 抓到目標貓咪，加 10 分！";
         } else {
-            player.score -= 5;
-            room.message = player.name + " 點錯小貓，扣 5 分。";
+            // 寬限期內同時接受新舊目標，避免切換瞬間誤扣分
+            boolean inGrace = (System.currentTimeMillis() - room.targetSwitchedAtMillis) < TARGET_GRACE_MS;
+            boolean isCorrect = entity.variant.equals(room.targetVariant)
+                    || (inGrace && entity.variant.equals(room.previousTargetVariant));
+
+            if (isCorrect) {
+                player.score += 10;
+                room.message = player.name + " 抓到目標貓咪，加 10 分！";
+            } else {
+                player.score -= 5;
+                room.message = player.name + " 點錯小貓，扣 5 分。";
+            }
         }
         return Protocol.encode("OK", "message", room.message);
     }
@@ -262,6 +271,9 @@ public class GameServer {
         room.targetTask = scheduler.scheduleAtFixedRate(() -> {
             synchronized (room) {
                 if (room.status == RoomStatus.PLAYING) {
+                    // 切換前先記錄舊目標與切換時間，用於寬限期保護
+                    room.previousTargetVariant = room.targetVariant;
+                    room.targetSwitchedAtMillis = System.currentTimeMillis();
                     room.targetVariant = randomVariant(room.targetVariant);
                     room.message = "目標已切換！快看上方提示。";
                 }
@@ -581,8 +593,9 @@ public class GameServer {
         final Map<String, Entity> entities = new HashMap<>();
         final Set<String> replayVotes = ConcurrentHashMap.newKeySet();
         RoomStatus status = RoomStatus.LOBBY;
-        String hostId, targetVariant = "GRAY", message = "等待玩家準備。";
+        String hostId, targetVariant = "GRAY", previousTargetVariant = "GRAY", message = "等待玩家準備。";
         long gameEndMillis, returnAtMillis, countdownEndMillis;
+        long targetSwitchedAtMillis = 0L; // 記錄上次目標切換時間，用於寬限期計算
         ScheduledFuture<?> tickTask, spawnTask, targetTask, countdownTask;
 
         Room(String code) { this.code = code; }

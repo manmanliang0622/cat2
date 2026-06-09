@@ -155,8 +155,9 @@ public class GameScene {
 
         // ── Entity & state tracking ───────────────────────────────────────────
         Map<String, VBox> entityNodes = new HashMap<>();
-        final int[]    prevScore    = {0};
-        final String[] prevTarget   = {"GRAY"};
+        final int[]     prevScore    = {0};
+        final String[]  prevTarget   = {"GRAY"};
+        final boolean[] clickLocked  = {false}; // 目標切換動畫期間暫時鎖定點擊
         // 倒數覆蓋層的 Label，在 listener 建立後才填入
         final Label[]  countLblRef  = {null};
         final int[]    lastShown    = {-1};
@@ -178,6 +179,13 @@ public class GameScene {
                 // Target change
                 if (!tv.equals(prevTarget[0])) {
                     prevTarget[0] = tv;
+
+                    // 鎖定點擊 300ms，讓畫面完成更新，避免玩家誤點舊目標
+                    clickLocked[0] = true;
+                    PauseTransition unlock = new PauseTransition(Duration.millis(300));
+                    unlock.setOnFinished(ev -> clickLocked[0] = false);
+                    unlock.play();
+
                     targetIV.setImage(imgCache.get(tv.toLowerCase()));
                     targetRing.setFill(Color.web(VARIANT_BG.getOrDefault(tv, "#F5F4F0"), 0.55));
                     targetIV.setEffect(new DropShadow(18, Color.web(VARIANT_COLOR.getOrDefault(tv, "#9E9E9E"))));
@@ -188,8 +196,8 @@ public class GameScene {
                         "-fx-background-color:" + VARIANT_BG.getOrDefault(tv, "#F5F4F0") + ";" +
                         "-fx-background-radius:22;" +
                         "-fx-effect:dropshadow(gaussian,rgba(160,120,130,0.15),10,0,0,3);");
-                    ScaleTransition fl = new ScaleTransition(Duration.millis(160), targetSection);
-                    fl.setFromX(1.0); fl.setFromY(1.0); fl.setToX(1.05); fl.setToY(1.05);
+                    ScaleTransition fl = new ScaleTransition(Duration.millis(220), targetSection);
+                    fl.setFromX(1.0); fl.setFromY(1.0); fl.setToX(1.08); fl.setToY(1.08);
                     fl.setAutoReverse(true); fl.setCycleCount(2); fl.play();
                     entityNodes.values().forEach(v -> updateGlow(v, tv, t));
                 }
@@ -225,7 +233,7 @@ public class GameScene {
 
                 for (GameClient.RemoteEntity e : state.entities()) {
                     if (!entityNodes.containsKey(e.id())) {
-                        VBox node = buildEntity(e, tv, client, canvas, t);
+                        VBox node = buildEntity(e, tv, client, canvas, t, clickLocked);
                         double sz = e.size();
                         double cw = canvas.getWidth()  > 0 ? canvas.getWidth()  : canvas.getPrefWidth();
                         double ch = canvas.getHeight() > 0 ? canvas.getHeight() : canvas.getPrefHeight();
@@ -343,7 +351,8 @@ public class GameScene {
     // ── Entity ────────────────────────────────────────────────────────────────
 
     private static VBox buildEntity(GameClient.RemoteEntity e, String targetVariant,
-                                     GameClient client, Pane canvas, Theme t) {
+                                     GameClient client, Pane canvas, Theme t,
+                                     boolean[] clickLocked) {
         boolean isDog = "DOG".equals(e.kind());
         String variant = e.variant();
         double size = e.size();
@@ -390,7 +399,8 @@ public class GameScene {
         updateGlow(vbox, targetVariant, t);
 
         vbox.setOnMouseClicked(evt -> {
-            vbox.setOnMouseClicked(null);
+            if (clickLocked[0]) return; // 目標切換動畫期間忽略點擊
+            vbox.setOnMouseClicked(null); // 點擊後立即移除 handler，避免重複觸發
             client.sendClick(e.id());
             clickAnim(vbox);
             double cx = vbox.getLayoutX() + vbox.getBoundsInLocal().getWidth() / 2;
